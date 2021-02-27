@@ -153,6 +153,7 @@ These methods will convert monophonic and stereophonic 16bit audio sample into a
 used in real time processing without degrading performances of your game / application.
 In addition you can use the reverse normalisation process to do the exact opposite when required
 (32bit data sample to 16bit signed data sample conversion)
+```
 ```python
 # usage
 normalize_array_mono(data)
