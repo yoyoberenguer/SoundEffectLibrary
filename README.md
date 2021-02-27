@@ -78,6 +78,12 @@ and a C-compiler are correctly install on your system.
 
 ## Recording sound from a microphone
 -----------------------------------------
+```
+Record sound(s) from the microphone to disk (default file is 'output.wav') when 
+the variable record_ is set to True, otherwise return a buffer containing the data 
+samples. If the variable duration_ is omitted, the recorded signal duration is 
+limited to 10 seconds.
+```
 ```python
 usage : 
 record_microphone(duration_=10, record_=True)
@@ -90,11 +96,11 @@ cpdef record_microphone(int format_=paInt16,
                         short int channels_=1,
                         int sample_rate_=44100,
                         int chunk_=16384,
-                        int duration_=1,
+                        int duration_=10,
                         bint record_=False,
                         str filename_="output.wav"):
 """
-RECORD SOUNDS FROM THE MICROPHONE 
+RECORD SOUNDS FROM THE MICROPHONE INTO A BUFFER 
 
 Return OSError if no microphone can be used for recording. 
 OSError: [Errno -9996] Invalid input device (no default output device)
