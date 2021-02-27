@@ -2,8 +2,55 @@
 Sound effect library 
 
 ```
+Sound Effect Library is a free software that include a large variety of tools to modify 
+and create sound effects for video games and can also be used for sound processing. 
+It provides fast algorithms written in python and Cython in addition to C/C++ code (external libraries) 
+included with the project. 
+This project rely on Pygame mixer and sndarray modules in order to build and extract data samples into numpy.sndarray. 
+The algorithms are build for int16 and float32 array datatype and for monophonic & stereophonic sound effects
+Choose the correct algorithm according to the data-type and sound model 
 
+Below details list of methods available at your convenience
+- Microphone recording 
+- Sound recording (wav format)
+- Data sample normalisation &reverse normalisation process 
+- RMS calculator and display
+- Fade in / Fade out effect
+- Tinnitus effect
+- Generate silence 
+- Low pass filter 
+- Harmonic representation
+- Noise signal
+- Square signal
+- triangular signal 
+- cosine signal 
+- Cosine carrier 
+- Sound time shifting
+- Volume change 
+- Reverse sound 
+- Sound Inversion 
+- Mixing sounds 
+- Up / Down data sampling
+- Panning sound effect 
+- Median filtering 
+- Averaging filtering 
+- Echo sound effect
+- Pitch shifting and time stretching  
 
+ Not included in this version 
+ - high pass / bandpass filtering
+ - Gaussian filtering
+    
+
+Requirements : 
+- Pygame 
+- Numpy
+- Librosa (for time stretching and pitch shifting)
+- pyaudio (to record sound effect with microphone)
+- Matplotlib (to represent graphically signal time domain to frequency domain, harmonics)
+- scipy (for signal processing such as low pass/high pass filter and passband 
+- wave (to create wav file to disk)
+- Cython 
 
 ```
 
