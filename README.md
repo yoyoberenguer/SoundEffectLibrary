@@ -178,6 +178,24 @@ inverse_normalize_mono_asarray(data)
 
 ```
 
+### RMS information 
+```
+Use the below algorithm when you need to perform the RMS calcuation for a given 
+numpy array data sample or pygame sound object.
+```
+```python
+# usage
+```
+```python
+```
+
+### Fade in & Fade out effect 
+```
+```
+```python
+```
+```python
+```
 
 
 
