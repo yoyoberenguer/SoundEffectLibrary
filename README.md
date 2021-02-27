@@ -213,7 +213,7 @@ numpy array data sample or pygame sound object.
 ```python
 ```
 
-### Low pass filtering effect
+### Low pass filtering effect (signal processing)
 ```
 ```
 ```python
@@ -221,7 +221,7 @@ numpy array data sample or pygame sound object.
 ```python
 ```
 
-### Harmonic (study frequency domain)
+### Harmonic (display signal frequency domain)
 ```
 ```
 ```python
@@ -237,7 +237,7 @@ numpy array data sample or pygame sound object.
 ```python
 ```
 
-### Create basic audio signals (noise, square, triangular, cosinus, cosinus carrier)
+### Create basic audio signals (noise, square, triangular, cosinus, waveform carrier)
 ```
 ```
 ```python
@@ -270,7 +270,7 @@ numpy array data sample or pygame sound object.
 ```python
 ```
 
-### Reversing sound effect
+### Reversing sound effect (playing backward)
 ```
 ```
 ```python
@@ -286,7 +286,7 @@ numpy array data sample or pygame sound object.
 ```python
 ```
 
-### Mixing sounds
+### Mixing sounds together 
 ```
 ```
 ```python
