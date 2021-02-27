@@ -11,7 +11,7 @@ __license__ = "MIT License"
 __version__ = "1.0.1"
 __maintainer__ = "Yoann Berenguer"
 __email__ = "yoyoberenguer@hotmail.com"
-__status__ = "Testing"
+__status__ = "tested"
 
 """
 MIT License
@@ -30,7 +30,60 @@ TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONIN
 THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+
+Sound Effect Library is a free software that include a large variety of tools to modify 
+and create sound effects for video games and can also be used for sound processing. 
+It provides fast algorithms written in python and Cython in addition to C/C++ code (external libraries) 
+included with the project. 
+This project rely on Pygame mixer and sndarray modules in order to build and extract data samples into numpy.sndarray. 
+The algorithms are build for int16 and float32 array datatype and for monophonic & stereophonic sound effects
+Choose the correct algorithm according to the data-type and sound model 
+
+Below details list of methods available at your convenience
+- Microphone recording 
+- Sound recording (wav format)
+- Data sample normalisation &reverse normalisation process 
+- RMS calculator and display
+- Fade in / Fade out effect
+- Tinnitus effect
+- Generate silence 
+- Low pass filter 
+- Harmonic representation
+- Noise signal
+- Square signal
+- triangular signal 
+- cosine signal 
+- Cosine carrier 
+- Sound time shifting
+- Volume change 
+- Reverse sound 
+- Sound Inversion 
+- Mixing sounds 
+- Up / Down data sampling
+- Panning sound effect 
+- Median filtering 
+- Averaging filtering 
+- Echo sound effect
+- Pitch shifting and time stretching  
+
+ Not included in this version 
+ - high pass / bandpass filtering
+ - Gaussian filtering
+    
+
+Requirements : 
+- Pygame 
+- Numpy
+- Librosa (for time stretching and pitch shifting)
+- pyaudio (to record sound effect with microphone)
+- Matplotlib (to represent graphically signal time domain to frequency domain, harmonics)
+- scipy (for signal processing such as low pass/high pass filter and passband 
+- wave (to create wav file to disk)
+- Cython 
+
+
 """
+
 
 
 
@@ -47,7 +100,8 @@ FLAG USED
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=ImportWarning)
 
 try:
     import pyaudio
@@ -101,7 +155,7 @@ except ImportError:
 from numpy import zeros, int16, empty, asarray, float32, float64, float_, \
     average, amin, amax, round, fft, hanning, ascontiguousarray
 cimport numpy
-from numpy cimport uint8_t, int16_t, float32_t, complex_t
+from numpy cimport uint8_t, int16_t, float32_t, complex_t, float64_t
 
 try:
     from scipy import signal
@@ -128,6 +182,11 @@ cdef extern from 'randnumber.c':
     void init_clock()nogil
     float randRangeFloat(float lower, float upper)nogil
     int randRange(int lower, int upper)nogil
+
+cdef extern from 'PitchShifting.cpp':
+    void smbPitchShift(float pitchShift, long numSampsToProcess, long fftFrameSize,
+                       long osamp, float sampleRate, float *indata, float *outdata)nogil
+
 
 DEF SCHEDULE = 'static'
 
@@ -333,6 +392,287 @@ cpdef record_sound(sound_, str filename_):
 
         return False
 
+cpdef normalize_array_mono(short [:] samples):
+    """
+    TAKE A NUMPY.NDARRAY AS INPUT (TYPE INT16) AND NORMALIZED THE VALUES (FLOAT32)
+    
+    :param samples: numpy.ndarray; Python numpy.ndarray type int16 representing the sound samples
+    :return       : a memoryview of an numpy.ndarray, with values [-1.0 pass +1.0] type python float (cython.double). 
+    Contiguous array
+    """
+    if not is_valid_mono_array(samples):
+        raise ValueError(message11)
+
+    cdef:
+        int width = <object>samples.shape[0]
+        float [::1] new_array = empty(width, float32)
+        int i
+        float s0
+
+    if width == 0:
+        raise ValueError(message12)
+
+    with nogil:
+        for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            s0 = samples[i]
+            if s0 > 0:
+                new_array[i] = s0 * INV_SHRT_MAX
+            elif s0 < 0:
+                new_array[i] = -s0 * INV_SHRT_MIN
+            else:
+                new_array[i] = 0.0
+    return new_array
+
+
+cpdef float [:, :] normalize_array_stereo(short [:, :] samples_):
+    """
+    TAKE AN ARRAY INT16 AS INPUT (SOUND SAMPLES) AND RETURN A NORMALIZED SAMPLES (FLOAT32)
+    
+    :param samples_: ndarray; reference Sound samples into an array
+    :return        : memoryview type [:, :] with floats values representing a normalized sound 
+    """
+
+    if not is_valid_stereo_array(samples_):
+        raise ValueError(message14)
+
+    cdef:
+        int width = <object>samples_.shape[0]
+        int i
+        float s0, s1
+        float [:, :] new_array = empty((width, 2), float32)
+
+    if width == 0:
+        raise ValueError(message12)
+
+    with nogil:
+        for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            s0 = samples_[i, 0]
+            s1 = samples_[i, 1]
+            if s0 > 0:
+                new_array[i, 0] = s0 * INV_SHRT_MAX
+
+            elif s0 < 0:
+                new_array[i, 0] = -s0 * INV_SHRT_MIN
+
+            else:
+                new_array[i, 0] = 0.0
+
+            if s1 > 0:
+                new_array[i, 1] = s1 * INV_SHRT_MAX
+
+            elif s1 < 0:
+                new_array[i, 1] = -s1 * INV_SHRT_MIN
+
+            else:
+                new_array[i, 1] = 0.0
+
+    return new_array
+
+
+cpdef normalize_sound(sound_):
+    """
+    NORMALIZE A PYGAME SOUND OBJECT (STEREO OR MONOPHONIC), RETURN A NUMPY ARRAY 
+    
+    :param sound_: pygame.Sound; Pygame stereo sound object  
+    :return      : Return a sndarray python array type (n, ) or (n, 2) object representing 
+    a sound with float values [ -1.0 pass +1.0 ] 
+    """
+
+    if not is_type_soundobject(sound_):
+        raise ValueError(message23 % 1)
+
+    try:
+        sound_array = pygame.sndarray.samples(sound_)
+    except:
+        raise ValueError(message39)
+
+    # mono array
+    if is_valid_mono_array(sound_array):
+        # Array is already normalized
+        if sound_array.dtype == float32:
+            return sound_array
+
+    # stereo array
+    elif is_valid_stereo_array(sound_array):
+        # Array is already normalized (float32)
+        if sound_array.dtype==float32:
+            return sound_array
+    else:
+        raise ValueError(message30)
+
+    cdef:
+        int channel_number = len(sound_array.shape)
+        int width          = <object>sound_array.shape[0]
+        short [::1] array_mono = sound_array if channel_number == 1 else empty(width, int16)
+        short [:, :] array_stereo = sound_array if channel_number == 2 else empty((width, 2), int16)
+        float [:, :] stereo_samples = empty((width, 2), float32)
+        float [::1] mono_sample = empty(width, float32)
+        int i
+        float s0, s1
+
+    if width == 0:
+        raise ValueError(message12)
+
+    # stereo
+    if channel_number == 2:
+
+        with nogil:
+            for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                s0 = array_stereo[i, 0]
+                s1 = array_stereo[i, 1]
+                if s0 > 0:
+                    stereo_samples[i, 0] = <float>(s0 * INV_SHRT_MAX)
+
+                elif s0 < 0:
+                    stereo_samples[i, 0] = <float>(-s0 * INV_SHRT_MIN)
+
+                else:
+                    stereo_samples[i, 0] = 0.0
+
+                if s1 > 0:
+                    stereo_samples[i, 1] = <float>(s1 * INV_SHRT_MAX)
+
+                elif s1 < 0:
+                    stereo_samples[i, 1] = <float>(-s1 * INV_SHRT_MIN)
+
+                else:
+                    stereo_samples[i, 1] = 0.0
+        return asarray(stereo_samples)
+
+    # mono
+    elif channel_number == 1:
+
+        with nogil:
+            for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                s0 = array_mono[i]
+
+                if s0 > 0:
+                    mono_sample[i] = <float>(s0 * INV_SHRT_MAX)
+
+                elif s0 < 0:
+                    mono_sample[i] = <float>(-s0 * INV_SHRT_MIN)
+
+                else:
+                    mono_sample[i] = 0.0
+
+        return asarray(mono_sample)
+
+    else:
+        raise ValueError(message30)
+
+
+# ************************************* MAX RMS VALUE ******************************************
+
+cpdef rms_max_mono_int16(short [:] samples_):
+    """
+    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA INT16
+      
+    * Compatible monophonic sample data only (int16) 
+    
+    :param samples_: numpy.ndarray type int16 (n, ); Data samples (monophonic)
+    :return: return a scalar float value representing the maximum gain in the data samples
+    """
+
+    if not is_valid_mono_array(samples_):
+        raise ValueError(message11)
+
+    cdef:
+        int i = 0
+        int width = <object>samples_.shape[0]
+        float maximum
+
+    if width == 0:
+        raise ValueError(message11)
+
+    samples_norm = normalize_array_mono(samples_)
+    maximum = numpy.amax(samples_norm)
+    return <float>(10.0 * log10(maximum ** 2))
+
+
+cpdef rms_max_mono_float32(float [:] samples_):
+    """
+    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA
+      
+    * Compatible monophonic sample data only 
+    
+    :param samples_: numpy.ndarray type float (n, ); Data samples (monophonic)
+    :return: return a scalar float value representing the maximum gain in the data samples
+    """
+
+    if not is_valid_mono_array(samples_):
+        raise ValueError(message11)
+
+    cdef:
+        int i = 0
+        int width = <object>samples_.shape[0]
+        float maximum
+
+    if width == 0:
+        raise ValueError(message11)
+
+    maximum = numpy.amax(samples_)
+    return <float>(10.0 * log10(maximum ** 2))
+
+
+cpdef rms_max_stereo_float32(float [:, :] samples_):
+    """
+    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA
+    
+    * Compatible stereophonic sample data only 
+    
+    :param samples_: numpy.ndarray type float (n, ); Data samples (stereophonic)
+    :return: return a tuple of float values representing the maximum gain in the 
+    data samples (left channel, right channel)
+    """
+
+    if not is_valid_stereo_array(samples_):
+        raise ValueError(message14)
+
+    cdef:
+        int i = 0
+        int width = <object>samples_.shape[0]
+        float maximum_0, maximum_1
+
+    if width == 0:
+        raise ValueError(message11)
+
+
+    maximum_0 = numpy.amax(samples_[:, 0])
+    maximum_1 = numpy.amax(samples_[:, 1])
+
+    return <float>(10.0 * log10(maximum_0 ** 2)), <float>(10.0 * log10(maximum_1 ** 2))
+
+cpdef rms_max_stereo_int16(short [:, :] samples_):
+    """
+    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA
+    
+    * Compatible stereophonic sample data only (float32)
+    
+    :param samples_: numpy.ndarray type int16 (n, ); Data samples (stereophonic)
+    :return: return a tuple of float values representing the maximum gain in the 
+    data samples (left channel, right channel)
+    """
+
+    if not is_valid_stereo_array(samples_):
+        raise ValueError(message14)
+
+    cdef:
+        int i = 0
+        int width = <object>samples_.shape[0]
+        float maximum_0, maximum_1
+
+    if width == 0:
+        raise ValueError(message11)
+
+
+    normalized_samples = normalize_array_stereo(samples_)
+    maximum_0 = numpy.amax(normalized_samples[:, 0])
+    maximum_1 = numpy.amax(normalized_samples[:, 1])
+
+    return <float>(10.0 * log10(maximum_0 ** 2)), <float>(10.0 * log10(maximum_1 ** 2))
+
+
+
 # **************************** FADE-IN *************************************
 
 @cython.boundscheck(False)
@@ -365,6 +705,9 @@ cpdef fade_in(sound_, float fade_in_, float sample_rate_):
     cdef:
         int width = <object>sound_array.shape[0]
         float t = <float>width / <float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if fade_in_ == 0:
         return
@@ -431,6 +774,9 @@ cpdef fade_in_mono_int16(short [::1] samples_, const float fade_in_, const float
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_in_ == 0:
         return asarray(samples_, int16)
     elif fade_in_ < 0:
@@ -486,6 +832,9 @@ cpdef fade_in_mono_float32(float [::1] samples_, const float fade_in_, const flo
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_in_ == 0:
         return asarray(samples_, float32)
     elif fade_in_ < 0:
@@ -539,6 +888,9 @@ cpdef fade_in_stereo_int16(short [:, :] samples_, const float fade_in_, const fl
     cdef:
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if fade_in_ == 0:
         return asarray(samples_)
@@ -595,6 +947,9 @@ cpdef fade_in_stereo_float32(float [:, :] samples_, const float fade_in_, const 
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_in_ == 0:
         return asarray(samples_, float32)
     elif fade_in_ < 0:
@@ -650,6 +1005,9 @@ cpdef fade_in_mono_inplace_int16(short [::1] samples_, const float fade_in_, con
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_in_ == 0:
         return asarray(samples_)
     elif fade_in_ < 0:
@@ -701,6 +1059,9 @@ cpdef fade_in_mono_inplace_float32(float [::1] samples_, const float fade_in_, c
     cdef:
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if fade_in_ == 0:
         return asarray(samples_, float32)
@@ -754,6 +1115,9 @@ cpdef fade_in_stereo_inplace_int16(short [:, :] samples_, const float fade_in_, 
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_in_ == 0:
         return asarray(samples_)
     elif fade_in_ < 0:
@@ -806,6 +1170,9 @@ cpdef fade_in_stereo_inplace_float32(float [:, :] samples_, const float fade_in_
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_in_ == 0:
         return asarray(samples_, float32)
     elif fade_in_ < 0:
@@ -853,6 +1220,9 @@ cpdef fade_out(sound_, float fade_out_, float sample_rate_):
     cdef:
         int width = <object>sound_array.shape[0]
         float t = <float>width / <float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if fade_out_ >=t:
         return
@@ -919,6 +1289,9 @@ cpdef fade_out_mono_int16(short [::1] samples_, const float fade_out_, const flo
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_out_ >=t:
         return asarray(samples_)
     elif fade_out_ < 0:
@@ -975,6 +1348,9 @@ cpdef fade_out_mono_float32(float [::1] samples_, const float fade_out_, const f
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_out_ >=t:
         return asarray(samples_)
     elif fade_out_ < 0:
@@ -1028,6 +1404,9 @@ cpdef fade_out_stereo_int16(short [:, :] samples_, const float fade_out_, const 
     cdef:
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if fade_out_ >=t:
         return asarray(samples_)
@@ -1084,6 +1463,9 @@ cpdef fade_out_stereo_float32(float [:, :] samples_, const float fade_out_, cons
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_out_ >=t:
         return asarray(samples_)
     elif fade_out_ < 0:
@@ -1138,6 +1520,9 @@ cpdef fade_out_mono_inplace_int16(short [::1] samples_, const float fade_out_, c
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_out_ >=t:
         return asarray(samples_)
     elif fade_out_ < 0:
@@ -1190,6 +1575,9 @@ cpdef fade_out_mono_inplace_float32(float [::1] samples_, const float fade_out_,
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_out_ >=t:
         return asarray(samples_)
     elif fade_out_ < 0:
@@ -1241,6 +1629,9 @@ cpdef fade_out_stereo_inplace_float32(float [:, :] samples_, const float fade_ou
     cdef:
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if fade_out_ >=t:
         return asarray(samples_)
@@ -1296,6 +1687,9 @@ cpdef fade_out_stereo_inplace_int16(short [:, :] samples_, const float fade_out_
         int width = <object>samples_.shape[0]
         float t = <float>width / <float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if fade_out_ >=t:
         return asarray(samples_)
     elif fade_out_ < 0:
@@ -1323,12 +1717,12 @@ cpdef tinnitus(float amplitude_ = 0.5,
     """
     CREATE TINNITUS EFFECT (SOUND AFTER A LOUD EXPLOSION)
     
-    :param amplitude_  : float; signal amplitude (normalized value [-1.0 ... 1.0] default 0.5 
+    :param amplitude_  : float; signal amplitude (normalized value [-1.0 pass 1.0] default 0.5 
     :param duration_   : float; duration in seconds default 1 second   
     :param frequency_  : float; frequency in hertz default 6500hz
     :param sample_rate_: integer; sample rate default 48khz
-    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 ... 1.0]
-    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi ... +pi[
+    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 pass 1.0]
+    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi pass +pi[
     :return           : return tuple (sound vector and sound array)
     """
 
@@ -1434,12 +1828,12 @@ cpdef tinnitus_fade_out(float fade_out_,
     """
     CREATE TINNITUS EFFECT WITH A FADE-OUT EFFECT (SOUND AFTER A LOUD EXPLOSION)
     :param fade_out_   : float; Fade out starting time effect (must be < to the sound effect length and >0)
-    :param amplitude_  : float; signal amplitude (normalized value [-1.0 ... 1.0] default 0.5 
+    :param amplitude_  : float; signal amplitude (normalized value [-1.0 pass 1.0] default 0.5 
     :param duration_   : float; duration in seconds default 1 second   
     :param frequency_  : float; frequency in hertz default 6500hz
     :param sample_rate_: integer; sample rate default 48khz
-    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 ... 1.0]
-    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi ... +pi[
+    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 pass 1.0]
+    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi pass +pi[
     :return           : return tuple (sound vector and sound array)
     """
 
@@ -1564,6 +1958,9 @@ cpdef generate_silence(sound_, float start_, float end_, int sample_rate_):
         int width = <object>sound_array.shape[0]
         float t   = <float>width/<float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if not (0 <= end_ <= t):
         raise ValueError(message45 % (0, "end_", t, end_))
 
@@ -1571,9 +1968,9 @@ cpdef generate_silence(sound_, float start_, float end_, int sample_rate_):
         raise ValueError(message44 % (0, "start_", end_, start_))
 
     if is_valid_mono_array(sound_array):
-        ...
+        pass
     elif is_valid_stereo_array(sound_array):
-        ...
+        pass
     else:
         raise ValueError(message30)
 
@@ -1655,6 +2052,9 @@ cpdef generate_silence_array_mono_int16(short [:] sound_array_, float start_, fl
         int width = <object>sound_array_.shape[0]
         float t   = <float>width/<float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if not (0 <= end_ <= t):
         raise ValueError(message45 % (0, "end_", t, end_))
 
@@ -1699,6 +2099,9 @@ cpdef generate_silence_array_mono_float32(float [:] sound_array_, float start_, 
         int width = <object>sound_array_.shape[0]
         float t   = <float>width/<float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if not (0 <= end_ <= t):
         raise ValueError(message45 % (0, "end_", t, end_))
 
@@ -1741,6 +2144,9 @@ cpdef generate_silence_array_stereo_int16(short [:, :] sound_array_, float start
         int width = <object>sound_array_.shape[0]
         float t   = <float>width/<float>sample_rate_
 
+    if width == 0:
+        raise ValueError(message12)
+
     if not (0 <= end_ <= t):
         raise ValueError(message45 % (0, "end_", t, end_))
 
@@ -1782,6 +2188,9 @@ cpdef generate_silence_array_stereo_float32(float [:, :] sound_array_, float sta
     cdef:
         int width = <object>sound_array_.shape[0]
         float t   = <float>width/<float>sample_rate_
+
+    if width == 0:
+        raise ValueError(message12)
 
     if not (0 <= end_ <= t):
         raise ValueError(message45 % (0, "end_", t, end_))
@@ -2086,6 +2495,9 @@ cpdef low_pass(sound_, float fc_):
         float delay = 0.005               # 5 ms delay between channel 1 and channel 2 (force delay for stereo mode)
         int s = <int>(frequency * delay)  # delay into the array for stereo mode only
 
+    if width == 0:
+        raise ValueError(message12)
+
     if len(sound_array.shape) == 2:
         with nogil:
             for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -2137,9 +2549,9 @@ cpdef harmonics(object samples_:numpy.ndarray, int sampling_rate_=44100, int wid
 
     # compatible float and double
     if is_monophonic(samples_):
-        ...
+        pass
     elif is_stereophonic(samples_):
-        ...
+        pass
     else:
         raise ValueError(message30)
 
@@ -2208,120 +2620,10 @@ cpdef harmonics(object samples_:numpy.ndarray, int sampling_rate_=44100, int wid
         if pygame.display.get_init() else pygame.transform.smoothscale(surf, (width, height))
     return surf, pxx
 
-# ************************************* MAX RMS VALUE ******************************************
-
-cpdef float rms_max_mono_int16(short [:] samples_):
-    """
-    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA INT16
-      
-    * Compatible monophonic sample data only (int16) 
-    
-    :param samples_: numpy.ndarray type int16 (n, ); Data samples (monophonic)
-    :return: return a scalar float value representing the maximum gain in the data samples
-    """
-
-    if not is_valid_mono_array(samples_):
-        raise ValueError(message11)
-
-    cdef:
-        int i = 0
-        int width = <object>samples_.shape[0]
-        float maximum
-
-    if width == 0:
-        raise ValueError(message11)
-
-    samples_norm = normalize_array_mono(samples_)
-    maximum = numpy.amax(samples_norm)
-    return <float>(10.0 * log10(maximum ** 2))
-
-
-cpdef float rms_max_mono_float32(float [:] samples_):
-    """
-    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA
-      
-    * Compatible monophonic sample data only 
-    
-    :param samples_: numpy.ndarray type float (n, ); Data samples (monophonic)
-    :return: return a scalar float value representing the maximum gain in the data samples
-    """
-
-    if not is_valid_mono_array(samples_):
-        raise ValueError(message11)
-
-    cdef:
-        int i = 0
-        int width = <object>samples_.shape[0]
-        float maximum
-
-    if width == 0:
-        raise ValueError(message11)
-
-    maximum = numpy.amax(samples_)
-    return <float>(10.0 * log10(maximum ** 2))
-
-
-cpdef rms_max_stereo_int16(short [:, :] samples_):
-    """
-    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA
-    
-    * Compatible stereophonic sample data only (float32)
-    
-    :param samples_: numpy.ndarray type int16 (n, ); Data samples (stereophonic)
-    :return: return a tuple of float values representing the maximum gain in the 
-    data samples (left channel, right channel)
-    """
-
-    if not is_valid_stereo_array(samples_):
-        raise ValueError(message14)
-
-    cdef:
-        int i = 0
-        int width = <object>samples_.shape[0]
-        float maximum_0, maximum_1
-
-    if width == 0:
-        raise ValueError(message11)
-
-
-    normalized_samples = normalize_array_stereo(samples_)
-    maximum_0 = numpy.amax(normalized_samples[:, 0])
-    maximum_1 = numpy.amax(normalized_samples[:, 1])
-
-    return <float>(10.0 * log10(maximum_0 ** 2)), <float>(10.0 * log10(maximum_1 ** 2))
-
-
-cpdef rms_max_stereo_float32(float [:, :] samples_):
-    """
-    RETURN THE MAXIMUM GAIN VALUE FROM A SOUND DATA
-    
-    * Compatible stereophonic sample data only 
-    
-    :param samples_: numpy.ndarray type float (n, ); Data samples (stereophonic)
-    :return: return a tuple of float values representing the maximum gain in the 
-    data samples (left channel, right channel)
-    """
-
-    if not is_valid_stereo_array(samples_):
-        raise ValueError(message14)
-
-    cdef:
-        int i = 0
-        int width = <object>samples_.shape[0]
-        float maximum_0, maximum_1
-
-    if width == 0:
-        raise ValueError(message11)
-
-
-    maximum_0 = numpy.amax(samples_[:, 0])
-    maximum_1 = numpy.amax(samples_[:, 1])
-
-    return <float>(10.0 * log10(maximum_0 ** 2)), <float>(10.0 * log10(maximum_1 ** 2))
 
 # ******************************************** REMOVE SILENCE(S) ***********************************************
 
-cpdef remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None):
+cpdef remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False):
     """
     TRIM LEADING AND TRAILING SILENCE FROM AN AUDIO SIGNAL (STEREOPHONIC INT16)
     
@@ -2330,6 +2632,7 @@ cpdef remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None):
     :param samples_      : numpy.array; Represent the data samples (stereophonic) type int16 shape (n, 2)
     :param rms_threshold_: float; Threshold RMS (in decibels), below this value, samples are considered unable
      to be heard and will be removed from the final data. Value must be < signal average db
+    :param bypass_avg_   : bool; Bypass the average value (RMS value > avg can be considered negligible)
     :return              : Return a pygame.mixer.Sound object (stereophonic) 
     """
 
@@ -2350,13 +2653,14 @@ cpdef remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None):
         float max_db0, max_db1, avg_left_db, avg_right_db, avg_centre_db
         bint silence_start = False, silence_end = False
 
-    # # NOT USED
-    # max_db0, max_db1 = rms_max_stereo(normalized_samples)
+    if width == 0:
+        raise ValueError(message12)
+
     avg_left_db, avg_right_db, avg_centre_db = rms_values_stereo(samples_)
 
-    # RMS Threshold > avg_db is considered an invalid value
-    if threshold > avg_centre_db:
-        raise ValueError(message3 % (threshold, avg_centre_db))
+    if not bypass_avg_:
+        if threshold > avg_centre_db:
+            raise ValueError(message3 % (threshold, avg_centre_db))
 
     with nogil:
         # Skip the start if first entry RMS value > threshold (no silence)
@@ -2390,6 +2694,9 @@ cpdef remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None):
     # No silence, return original data samples
     if not (silence_start | silence_end): return make_sound(numpy.asarray(samples_, int16))
 
+    if j - i <=0:
+        return make_sound(numpy.zeros((width, 2), int16))
+
     cdef float [:, :] new_array = zeros((j - i, 2), float32)
 
     with nogil:
@@ -2397,10 +2704,10 @@ cpdef remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None):
             new_array[k - i, 0] = normalized_samples[k, 0]
             new_array[k - i, 1] = normalized_samples[k, 1]
 
-    return inverse_normalize_stereo(numpy.asarray(new_array, dtype=float32))
+    return inverse_normalize_stereo(numpy.asarray(new_array))
 
 
-cpdef remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None):
+cpdef remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False):
     """
     TRIM LEADING AND TRAILING SILENCE FROM AN AUDIO SIGNAL (STEREOPHONIC float32)
     
@@ -2409,6 +2716,7 @@ cpdef remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None):
     :param samples_      : numpy.array; Represent the data samples (stereophonic) type float32 shape (n, 2)
     :param rms_threshold_: float; Threshold RMS (in decibels), below this value, samples are considered unable
      to be heard and will be removed from the final data. Value must be < signal average db
+     :param bypass_avg_   : bool; Bypass the average value (RMS value > avg can be considered negligible)
     :return              : Return a pygame.mixer.Sound object (stereophonic) 
     """
 
@@ -2424,38 +2732,41 @@ cpdef remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None):
         int width = <object>samples_.shape[0]
         int count = 0
         int i = 0, j = width, k = 0
-        float [:, :] normalized_samples = samples_
         float rms_value_0, rms_value_1
         float max_db0, max_db1, avg_left_db, avg_right_db, avg_centre_db
         bint silence_start = False, silence_end = False
+
+    if width == 0:
+        raise ValueError(message12)
 
     # # NOT USED
     # max_db0, max_db1 = rms_max_stereo(normalized_samples)
     avg_left_db, avg_right_db, avg_centre_db = rms_values_stereo(samples_)
 
     # RMS Threshold > avg_db is considered an invalid value
-    if threshold > avg_centre_db:
-        raise ValueError(message3 % (threshold, avg_centre_db))
+    if not bypass_avg_:
+        if threshold > avg_centre_db:
+            raise ValueError(message3 % (threshold, avg_centre_db))
 
     with nogil:
         # Skip the start if first entry RMS value > threshold (no silence)
-        if <float>(10.0 * log10(normalized_samples[0, 0] ** 2)) < threshold and \
-            <float>(10.0 * log10(normalized_samples[0, 1] ** 2)) < threshold:
+        if <float>(10.0 * log10(samples_[0, 0] ** 2)) < threshold and \
+            <float>(10.0 * log10(samples_[0, 1] ** 2)) < threshold:
 
             for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                rms_value_0 = <float>(10.0 * log10(normalized_samples[i, 0] ** 2))
-                rms_value_1 = <float>(10.0 * log10(normalized_samples[i, 1] ** 2))
+                rms_value_0 = <float>(10.0 * log10(samples_[i, 0] ** 2))
+                rms_value_1 = <float>(10.0 * log10(samples_[i, 1] ** 2))
                 if rms_value_0 > threshold and rms_value_1 > threshold:
                     silence_start = True
                     break
 
-        if <float>(10.0 * log10(normalized_samples[width - 1, 0] ** 2)) < threshold and \
-            <float>(10.0 * log10(normalized_samples[width - 1, 1] ** 2)) < threshold:
+        if <float>(10.0 * log10(samples_[width - 1, 0] ** 2)) < threshold and \
+            <float>(10.0 * log10(samples_[width - 1, 1] ** 2)) < threshold:
 
             for j in prange(width-1, 0, -1, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
 
-                rms_value_0 = <float>(10.0 * log10(normalized_samples[j, 0] ** 2))
-                rms_value_1 = <float>(10.0 * log10(normalized_samples[j, 1] ** 2))
+                rms_value_0 = <float>(10.0 * log10(samples_[j, 0] ** 2))
+                rms_value_1 = <float>(10.0 * log10(samples_[j, 1] ** 2))
                 # printf("\nALL  J %f %f %f %d %i",\
                 #     normalized_samples[j, 0], rms_value_0, threshold, rms_value_0 > threshold, j)
 
@@ -2469,16 +2780,19 @@ cpdef remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None):
     # No silence, return original data samples
     if not (silence_start | silence_end): return make_sound(numpy.asarray(samples_, int16))
 
+    if j - i <=0:
+        return make_sound(numpy.zeros((width, 2), int16))
+
     cdef float [:, :] new_array = zeros((j - i, 2), float32)
 
     with nogil:
         for k in prange(i, j):
-            new_array[k - i, 0] = normalized_samples[k, 0]
-            new_array[k - i, 1] = normalized_samples[k, 1]
+            new_array[k - i, 0] = samples_[k, 0]
+            new_array[k - i, 1] = samples_[k, 1]
 
-    return inverse_normalize_stereo(numpy.asarray(new_array, dtype=float32))
+    return make_sound(numpy.asarray(new_array))
 
-cpdef remove_silence_mono_int16(short [:] samples_, rms_threshold_=None):
+cpdef remove_silence_mono_int16(short [::1] samples_, rms_threshold_=None, bint bypass_avg_ = False):
     """
     TRIM LEADING AND TRAILING SILENCE FROM AN AUDIO SIGNAL (MONOPHONIC INT16)
     
@@ -2487,62 +2801,71 @@ cpdef remove_silence_mono_int16(short [:] samples_, rms_threshold_=None):
     :param samples_      : numpy.array; Represent the data samples (monophonic) type int16 buffer
     :param rms_threshold_: float; Threshold RMS (in decibels), below this value samples are considered unable
      to be heard and will be removed from the final sampling. Value must be < signal average db
+    :param bypass_avg_   : bool; Bypass the average value (RMS value > avg can be considered negligible)
     :return              : Return a pygame.mixer.Sound object (monophonic)
     """
-    if rms_threshold_ is None: raise ValueError(message13)
+    if rms_threshold_ is None:
+        raise ValueError(message13)
 
     cdef float threshold = rms_threshold_
 
-    if not is_valid_mono_array(samples_): raise ValueError(message0 % str(samples_.shape))
+    if not is_valid_mono_array(samples_):
+        raise ValueError(message0 % str(samples_.shape))
 
     cdef:
         int width = <object>samples_.shape[0]
+        float [::1] normalized_array = normalize_array_mono(samples_)
         int count = 0
         int i = 0, j = width, k =0
-        float [:] normalized_samples = normalize_array_mono(samples_)
         float rms_value
         float max_db, avg_db
         bint silence_start, silence_end
 
-    assert width != 0, message12
+    if width == 0:
+        raise ValueError(message12)
 
-    max_db = rms_max_mono_float32(normalized_samples)
+    max_db = rms_max_mono_float32(normalized_array)
     avg_db = rms_value_mono(samples_)
 
-    # RMS Threshold > avg_db is considered an invalid value
-    if threshold > avg_db:
-        raise ValueError(message3 % (threshold, avg_db))
+    if not bypass_avg_:
+        if threshold > avg_db:
+            raise ValueError(message3 % (threshold, avg_db))
 
     with nogil:
 
-        if <float>(10.0 * log10(normalized_samples[0] ** 2)) < threshold:
+        if <float>(10.0 * log10(normalized_array[0] ** 2)) < threshold:
 
             for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                rms_value = <float>(10.0 * log10(normalized_samples[i] ** 2))
+                rms_value = <float>(10.0 * log10(normalized_array[i] ** 2))
                 if rms_value >= threshold:
                     silence_start = True
                     break
 
-        if <float>(10.0 * log10(normalized_samples[width - 1] ** 2)) < threshold:
+        if <float>(10.0 * log10(normalized_array[width - 1] ** 2)) < threshold:
 
             for j in prange(width - 1, 0, -1, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                rms_value = <float>(10.0 * log10(normalized_samples[j] ** 2))
+                rms_value = <float>(10.0 * log10(normalized_array[j] ** 2))
                 if rms_value >= threshold:
                     silence_end = True
                     break
 
     # No silence, return original data samples
-    if not (silence_start | silence_end): return make_sound(numpy.asarray(samples_, int16))
+    if not (silence_start | silence_end):
+        return make_sound(numpy.asarray(samples_, int16))
 
-    cdef double [:] new_array = empty(j - i, float64)
+    if j - i <=0:
+        return make_sound(numpy.zeros(width, int16))
+
+    cdef float [::1] new_array = empty(j - i, float32)
+
     with nogil:
         for k in prange(i, j):
-            new_array[k - i] = normalized_samples[k]
+            new_array[k - i] = normalized_array[k]
 
     return inverse_normalize_mono(numpy.asarray(new_array, dtype=float32))
 
 
-cpdef remove_silence_mono_float32(float [:] samples_, rms_threshold_=None):
+cpdef remove_silence_mono_float32(float [::1] samples_, rms_threshold_=None, bint bypass_avg_ = False):
     """
     TRIM LEADING AND TRAILING SILENCE FROM AN AUDIO SIGNAL (MONOPHONIC FLOAT32)
     
@@ -2551,46 +2874,49 @@ cpdef remove_silence_mono_float32(float [:] samples_, rms_threshold_=None):
     :param samples_      : numpy.array; Represent the data samples (monophonic) type float32 buffer
     :param rms_threshold_: float; Threshold RMS (in decibels), below this value samples are considered unable
      to be heard and will be removed from the final sampling. Value must be < signal average db
+    :param bypass_avg_   : bool; Bypass the average value (RMS value > avg can be considered negligible)
     :return              : Return a pygame.mixer.Sound object (monophonic)
     """
-    if rms_threshold_ is None: raise ValueError(message13)
+    if rms_threshold_ is None:
+        raise ValueError(message13)
 
     cdef float threshold = rms_threshold_
 
-    if not is_valid_mono_array(samples_): raise ValueError(message0 % str(samples_.shape))
+    if not is_valid_mono_array(samples_):
+        raise ValueError(message0 % str(samples_.shape))
 
     cdef:
         int width = <object>samples_.shape[0]
         int count = 0
         int i = 0, j = width, k =0
-        float [:] normalized_samples = samples_
         float rms_value
         float max_db, avg_db
         bint silence_start, silence_end
 
-    assert width != 0, message12
+    if width == 0:
+        raise ValueError(message12)
 
-    max_db = rms_max_mono_float32(normalized_samples)
+    max_db = rms_max_mono_float32(samples_)
     avg_db = rms_value_mono(samples_)
 
-    # RMS Threshold > avg_db is considered an invalid value
-    if threshold > avg_db:
-        raise ValueError(message3 % (threshold, avg_db))
+    if not bypass_avg_:
+        if threshold > avg_db:
+            raise ValueError(message3 % (threshold, avg_db))
 
     with nogil:
 
-        if <float>(10.0 * log10(normalized_samples[0] ** 2)) < threshold:
+        if <float>(10.0 * log10(samples_[0] ** 2)) < threshold:
 
             for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                rms_value = <float>(10.0 * log10(normalized_samples[i] ** 2))
+                rms_value = <float>(10.0 * log10(samples_[i] ** 2))
                 if rms_value >= threshold:
                     silence_start = True
                     break
 
-        if <float>(10.0 * log10(normalized_samples[width - 1] ** 2)) < threshold:
+        if <float>(10.0 * log10(samples_[width - 1] ** 2)) < threshold:
 
             for j in prange(width - 1, 0, -1, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                rms_value = <float>(10.0 * log10(normalized_samples[j] ** 2))
+                rms_value = <float>(10.0 * log10(samples_[j] ** 2))
                 if rms_value >= threshold:
                     silence_end = True
                     break
@@ -2599,13 +2925,16 @@ cpdef remove_silence_mono_float32(float [:] samples_, rms_threshold_=None):
     if not (silence_start | silence_end):
         return make_sound(numpy.asarray(samples_))
 
-    cdef float [:] new_array = empty(j - i, float32)
+    if j - i <=0:
+        return make_sound(numpy.zeros(width, int16))
+
+    cdef float [::1] new_array = empty(j - i, float32)
 
     with nogil:
         for k in prange(i, j):
-            new_array[k - i] = normalized_samples[k]
+            new_array[k - i] = samples_[k]
 
-    return inverse_normalize_mono(numpy.asarray(new_array))
+    return make_sound(numpy.asarray(new_array))
 
 
 # ********************************************* SIGNALS ********************************************************
@@ -2623,7 +2952,7 @@ cpdef noise_signal(
     * Pygame mixer has to be initialized prior calling this method.
     * Noise sound will be either monophonic or stereophonic (depends on Pygame mixer settings) 
     
-    :param amplitude_  : float; Signal amplitude peak to peak, default 1.0 (must be in range ]0.0 ... 1.0])
+    :param amplitude_  : float; Signal amplitude peak to peak, default 1.0 (must be in range ]0.0 pass 1.0])
     :param duration_   : float; duration, time in seconds
     :param sample_rate_: integer; sample rate
     :return: pygame.mixer.Sound object;  Return a noise sound (random values generated). The sound object created 
@@ -2631,17 +2960,24 @@ cpdef noise_signal(
     this function.
     """
 
-    if not (0.0 < fabs(amplitude_) <= 1.0) : raise ValueError(message8)
+    if not (0.0 < fabs(amplitude_) <= 1.0) :
+        raise ValueError(message8)
 
-    if sample_rate_ not in FS: raise ValueError(message15 % (sample_rate_, FS))
+    if sample_rate_ not in FS:
+        raise ValueError(message15 % (sample_rate_, FS))
 
-    if not duration_ > 0: raise ValueError(message16)
+    if not duration_ > 0:
+        raise ValueError(message16)
+
+    # (frequency, format, channels)
     mixer_settings = pygame.mixer.get_init()
+
     if mixer_settings is None:
         raise ValueError(message6)
 
     cdef:
         unsigned short int channel = mixer_settings[2]
+        int format_ = mixer_settings[1]
         int width = <int>(duration_ * sample_rate_)
         float [::1] noise_array_nono = empty(width, float32)
         float [:, ::1] noise_array_stereo = empty((width, 2), float32)
@@ -2665,16 +3001,96 @@ cpdef noise_signal(
             raise NotImplementedError(message7)
 
     if channel == 1:
-         return make_sound(numpy.asarray(inverse_normalize_mono(noise_array_nono)))
+        if format_  == -16:
+            return make_sound(numpy.asarray(inverse_normalize_mono(noise_array_nono)))
+        else:
+            return make_sound(numpy.asarray(noise_array_nono))
 
     else:
-        return make_sound(numpy.asarray(inverse_normalize_stereo(noise_array_stereo)))
+        if format_ == -16:
+            return make_sound(numpy.asarray(inverse_normalize_stereo(noise_array_stereo)))
+        else:
+            return make_sound(numpy.asarray(noise_array_stereo))
+
+
+cpdef square_signal(float amplitude_ = 1.0,
+                    float duration_  = 1.0,
+                    float frequency_ = 100,
+                    int sample_rate_ = 48000,
+                    float c_         = 0.0,
+                    float phi_       = 0.0
+                    ):
+    """
+    RETURN A SQUARE DATA SAMPLE 
+    
+    * Amplitude zero will return a numpy array filled with zeros
+    
+    * Frequency = 0.0 will return a continuous signal (-1.0/+1.0 (float32) | 32767/-32768 (int16) + offset 
+    if any, signed by the amplitude value)  
+    
+    :param amplitude_  : float; signal amplitude (normalized value [-1.0 pass 1.0]
+    :param duration_   : float; duration in seconds default 1 second   
+    :param frequency_  : float; frequency in hertz default 1khz
+    :param sample_rate_: integer; sample rate default 48khz
+    :param c_          : float; Signal constant (default zero, centered on axis y)
+    :param phi_        : float; Radian offset (signal phase offset)
+    :return           : return tuple (sound vector and sound array)
+    """
+    assert fabs(amplitude_) <= 1.0, "\nArgument amplitude should be in range [-1.0pass 1.0] "
+
+    if sample_rate_ not in FS:
+        raise ValueError(message15 % (sample_rate_, FS))
+
+    if duration_ <= 0.0:
+        raise ValueError(message16)
+
+    if frequency_<0:
+        raise ValueError(message17)
+
+    if not -1.0 <= c_ <= 1.0:
+        raise ValueError(message18)
+
+    if not fabs(phi_) <= PI:
+        raise ValueError(message19)
+
+    mixer_settings = pygame.mixer.get_init()
+
+    if mixer_settings is None:
+        raise ValueError(message6)
+
+    cdef:
+        unsigned short int channel = mixer_settings[2]
+        int format_ = mixer_settings[1]
+        float omega = 2 * numpy.pi * frequency_
+        float T = 1.0 / sample_rate_
+        numpy.ndarray[float32_t, ndim=1] t_vec = (numpy.arange(sample_rate_ * duration_) * T).astype(float32)
+        numpy.ndarray[float32_t, ndim=1] square_mono = (amplitude_ * numpy.sign(
+            numpy.cos(omega * t_vec + phi_)) + c_).astype(float32)
+        numpy.ndarray[float32_t, ndim = 2] square_stereo \
+            = empty((<int>(sample_rate_ * duration_), 2), float32)
+
+    if channel == 1:
+        if format_ == -16:
+            return inverse_normalize_mono(square_mono)
+        else:
+            return make_sound(square_mono)
+
+    elif channel == 2:
+        square_stereo[:, 0] = (amplitude_ * numpy.sign(numpy.cos(omega * t_vec + phi_)) + c_).astype(float32)
+        square_stereo[:, 1] = (amplitude_ * numpy.sign(numpy.cos(omega * t_vec + phi_)) + c_).astype(float32)
+        if format_ == -16:
+            return inverse_normalize_stereo(square_stereo)
+        else:
+            return make_sound(square_stereo)
+
+    else:
+        raise ValueError(message7)
 
 
 cpdef triangular_signal(float amplitude_ = 1.0,
                         float duration_  = 0.5,
                         float frequency_ = 100,
-                        int sample_rate_ = 48000,
+                        int sample_rate_ = 44100,
                         float ramp_ = 0.5
                         ):
     """
@@ -2691,24 +3107,30 @@ cpdef triangular_signal(float amplitude_ = 1.0,
         same length as t.
     :return: Return a triangular signal data samples (numpy.ndarray int16) 
     """
-    if not (0.0 < fabs(amplitude_) <= 1.0) : raise ValueError(message8)
+    if not (0.0 < amplitude_ <= 1.0) :
+        raise ValueError(message8)
 
-    if duration_ <= 0.0 : raise ValueError(message16)
+    if duration_ <= 0.0 :
+        raise ValueError(message16)
 
-    if frequency_ < 0.0 : raise ValueError(message17)
+    if frequency_ < 0.0 :
+        raise ValueError(message17)
 
-    if sample_rate_ not in FS: raise ValueError(message15 % (sample_rate_, FS))
+    if sample_rate_ not in FS:
+        raise ValueError(message15 % (sample_rate_, FS))
 
-    if not (0 <= ramp_ <= 1.0) : raise ValueError(message20 % "ramp")
+    if not (0 <= ramp_ <= 1.0):
+        raise ValueError(message20 % "ramp")
 
     mixer_settings = pygame.mixer.get_init()
+
     if mixer_settings is None:
         raise ValueError(message6)
 
     cdef:
         unsigned short int channel = mixer_settings[2]
-
-    t = numpy.linspace(0, 1, <int>(sample_rate_ * duration_))
+        int format_ = mixer_settings[1]
+        numpy.ndarray [float32_t, ndim=1] t = numpy.linspace(0, 1, <int>(sample_rate_ * duration_)).astype(float32)
 
     cdef:
         numpy.ndarray[float32_t, ndim = 2] triangle_stereo \
@@ -2716,15 +3138,21 @@ cpdef triangular_signal(float amplitude_ = 1.0,
 
     if channel == 1:
         triangle = numpy.asarray(amplitude_ * signal.sawtooth(
-            2 * numpy.pi * frequency_ * t, ramp_), dtype=float32)
-        return inverse_normalize_mono(triangle)
+                2 * numpy.pi * frequency_ * t, ramp_), dtype=float32)
+        if format_ == -16:
+            return inverse_normalize_mono(triangle)
+        else:
+            return make_sound(triangle)
 
     elif channel ==2:
         triangle_stereo[:, 0] = numpy.asarray(
             amplitude_ * signal.sawtooth(2 * numpy.pi * frequency_ * t, ramp_), dtype=float32)
         triangle_stereo[:, 1] = numpy.asarray(
             amplitude_ * signal.sawtooth(2 * numpy.pi * frequency_ * t, ramp_), dtype=float32)
-        return inverse_normalize_stereo(triangle_stereo)
+        if format_ == -16:
+            return inverse_normalize_stereo(triangle_stereo)
+        else:
+            return make_sound(triangle_stereo)
 
     else:
         raise ValueError(message7)
@@ -2740,12 +3168,12 @@ cpdef cos_signal(float amplitude_ = 1.0,
     """
     CREATE A COSINE SIGNAL DATA SAMPLE
     
-    :param amplitude_  : float; signal amplitude (normalized value [-1.0 ... 1.0]
+    :param amplitude_  : float; signal amplitude (normalized value [-1.0 pass 1.0]
     :param duration_   : float; duration in seconds default 1 second   
     :param frequency_  : float; frequency in hertz default 1khz
     :param sample_rate_: integer; sample rate default 48khz
-    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 ... 1.0]
-    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi ... +pi[
+    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 pass 1.0]
+    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi pass +pi[
     :return           : return numpy ndarray shape (n, ) or (n, 2) 
     """
 
@@ -2777,37 +3205,39 @@ cpdef cos_signal(float amplitude_ = 1.0,
         int length = <int>(duration_ * sample_rate_)
         int i = 0
         unsigned short int channel = mixer_settings[2]
+        int format_ = mixer_settings[1]
         float [::1] y_mono = empty(length, float32)
         float [:, ::1] y_stereo = empty((length, 2), float32)
         float y
 
-    with nogil:
-
-        if channel == 1:
+    if channel == 1:
+        with nogil:
             for i in prange(0, length, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
                 y_mono[i] = <float>(amplitude_ * (cos(omega * <float>i / sample_rate_ + phi_) + c_))
+        if format_ == -16:
+            return inverse_normalize_mono(y_mono)
+        else:
+            return make_sound(asarray(y_mono, dtype=float32))
 
-        elif channel == 2:
+    elif channel == 2:
+        with nogil:
             for i in prange(0, length, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
                 y = <float>(amplitude_ * (cos(omega * <float>i / sample_rate_ + phi_) + c_))
                 y_stereo[i, 0] = y
                 y_stereo[i, 1] = y
+        if format_ == -16:
+            return inverse_normalize_stereo(y_stereo)
         else:
-            raise NotImplementedError(message7)
-
-    if channel == 1:
-         return asarray(y_mono, dtype=float32)
-
+            return make_sound(asarray(y_stereo, dtype=float32))
     else:
-        return asarray(y_stereo, dtype=float32)
-
+        raise NotImplementedError(message7)
 
 
 
 cpdef cos_carrier(float amplitude_ = 1.0,
                   float duration_  = 1.0,
                   list frequencies_ = [],
-                  int sample_rate_ = 48000,
+                  int sample_rate_ = 44100,
                   float c_         = 0.0,
                   double phi_      = 0.0
                   ):
@@ -2816,20 +3246,20 @@ cpdef cos_carrier(float amplitude_ = 1.0,
     
     Create a signal corresponding to the sum of all signals determine by their respective frequency property
     
-    * Output signal amplitude is within the limits [-amplitude ... +amplitude]. Modulating frequencies amplitude is 
+    * Output signal amplitude is within the limits [-amplitude pass +amplitude]. Modulating frequencies amplitude is 
       adjusted according to their position into the frequency list. e.g the carrier is 1/2 of the maximum amplitude, 
       the next frequency is 1/4, then 1/8 and so on.
        
     * The sum of all modulating frequency signal will always be <= abs(amplitude)
     
-    :param amplitude_  : float; signal amplitude (normalized value [-1.0 ... 1.0] maximum amplitude 
+    :param amplitude_  : float; signal amplitude (normalized value [-1.0 pass 1.0] maximum amplitude 
     for the carrier and modulating frequencies, default 1.0
     :param duration_   : float; duration in seconds default 1 second   
     :param frequencies_: float; list of frequencies in hertz default 1khz to mix (carrier first 
     and modulating frequencies)
     :param sample_rate_: integer; sample rate default 48khz
-    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 ... 1.0]
-    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi ... +pi[
+    :param c_          : float; Signal constant (default zero, centered on axis y) interval [-1.0 pass 1.0]
+    :param phi_        : double; Radian offset (signal phase offset) interval ]-pi pass +pi[
     :return           : return numpy ndarray shape (n, ) or (n, 2) 
     """
 
@@ -2840,7 +3270,7 @@ cpdef cos_carrier(float amplitude_ = 1.0,
         raise ValueError(message16)
 
     if isinstance(frequencies_, list) and len(frequencies_) == 0:
-        raise ValueError(message21 % frequencies_)
+        raise ValueError(message21 % "frequencies_")
 
     cdef float freq = 0
     for freq in frequencies_:
@@ -2866,9 +3296,11 @@ cpdef cos_carrier(float amplitude_ = 1.0,
         int length = <int>(duration_ * sample_rate_)
         int i = 0
         unsigned short int channel = mixer_settings[2]
+        int format_ = mixer_settings[1]
         float [::1] y_mono = zeros(length, float32)
         float [:, ::1] y_stereo = zeros((length, 2), float32)
         float y
+
 
     cdef :
         list g_mod = []
@@ -2894,7 +3326,10 @@ cpdef cos_carrier(float amplitude_ = 1.0,
                     y_mono[i] = y_mono[i] + <float>(amplitude_ * (cos(omega * <float>i / sample_rate_ + phi_) + c_))
 
             j = j + 1
-        return asarray(y_mono, dtype=float32)
+        if format_ == -16:
+            return inverse_normalize_mono(y_mono)
+        else:
+            return make_sound(asarray(y_mono, dtype=float32))
 
     elif channel == 2:
 
@@ -2908,74 +3343,16 @@ cpdef cos_carrier(float amplitude_ = 1.0,
                     y_stereo[i, 1] = y_stereo[i, 1] + y
 
             j = j + 1
-        return asarray(y_stereo, dtype=float32)
+        if format_ == -16:
+            return inverse_normalize_stereo(y_stereo)
+        else:
+            return make_sound(asarray(y_stereo, dtype=float32))
+
     else:
         raise NotImplementedError(message7)
 
 
-
-
-cpdef square_signal(float amplitude_ = 1.0,
-                    float duration_  = 1.0,
-                    float frequency_ = 100,
-                    int sample_rate_ = 48000,
-                    float c_         = 0.0,
-                    float phi_       = 0.0
-                    ):
-    """
-    RETURN A SQUARE DATA SAMPLE 
-    
-    * Amplitude zero will return a numpy array filled with zeros
-    
-    * Frequency = 0.0 will return a continuous signal (-1.0/+1.0 (float32) | 32767/-32768 (int16) + offset 
-    if any, signed by the amplitude value)  
-    
-    :param amplitude_  : float; signal amplitude (normalized value [-1.0 ... 1.0]
-    :param duration_   : float; duration in seconds default 1 second   
-    :param frequency_  : float; frequency in hertz default 1khz
-    :param sample_rate_: integer; sample rate default 48khz
-    :param c_          : float; Signal constant (default zero, centered on axis y)
-    :param phi_        : float; Radian offset (signal phase offset)
-    :return           : return tuple (sound vector and sound array)
-    """
-    assert fabs(amplitude_) <= 1.0, "\nArgument amplitude should be in range [-1.0... 1.0] "
-
-    if sample_rate_ not in FS: raise ValueError(message15 % (sample_rate_, FS))
-
-    if duration_ <= 0.0: raise ValueError(message16)
-
-    if frequency_<0: raise ValueError(message17)
-
-    if not -1.0 <= c_ <= 1.0: raise ValueError(message18)
-
-    if not fabs(phi_) <= PI: raise ValueError(message19)
-
-    mixer_settings = pygame.mixer.get_init()
-    if mixer_settings is None:
-        raise ValueError(message6)
-
-    cdef:
-        unsigned short int channel = mixer_settings[2]
-        float omega = 2 * numpy.pi * frequency_
-        float T = 1.0 / sample_rate_
-        numpy.ndarray[float32_t, ndim=1] t_vec = (numpy.arange(sample_rate_ * duration_) * T).astype(float32)
-        numpy.ndarray[float32_t, ndim=1] square_mono = (amplitude_ * numpy.sign(
-            numpy.cos(omega * t_vec + phi_)) + c_).astype(float32)
-        numpy.ndarray[float32_t, ndim = 2] square_stereo \
-            = empty((<int>(sample_rate_ * duration_), 2), float32)
-
-    if channel == 1:
-         return inverse_normalize_mono(square_mono)
-
-    elif channel == 2:
-        square_stereo[:, 0] = (amplitude_ * numpy.sign(numpy.cos(omega * t_vec + phi_)) + c_).astype(float32)
-        square_stereo[:, 1] = (amplitude_ * numpy.sign(numpy.cos(omega * t_vec + phi_)) + c_).astype(float32)
-        return inverse_normalize_stereo(square_stereo)
-
-    else:
-        raise ValueError(message7)
-
-cdef bint is_type_memoryview(object_):
+cpdef bint is_type_memoryview(object_):
     """
     Check if the given object is a memoryview type
     
@@ -2987,7 +3364,33 @@ cdef bint is_type_memoryview(object_):
     else:
         return False
 
-cdef bint is_type_soundobject(object_):
+cpdef memoryview_type_testing():
+    """
+    TESTING PURPOSE
+    :return: return lists of memoryviews
+    """
+    cdef:
+        short [:] mem_mono_int16_e = numpy.empty(0, int16)
+        short [::1] mem_mono_int16 = numpy.empty(1024, int16)
+        short [:, :] mem_stereo_int16 = numpy.empty((1024,2), int16)
+        short [:, :] mem_stereo_int16_o = numpy.empty((1024,3), int16)
+
+        float [:] mem_mono_float32_e = numpy.empty(0, float32)
+        float [::1] mem_mono_float32 = numpy.empty(1024, float32)
+        float [:, :] mem_stereo_float32 = numpy.empty((1024,2), float32)
+        float [:, :] mem_stereo_float32_o = numpy.empty((1024,3), float32)
+
+        double [:] mem_mono_float64_e = numpy.empty(0, float64)
+        double [::1] mem_mono_float64 = numpy.empty(1024, float64)
+        double [:, :] mem_stereo_float64 = numpy.empty((1024,2), float64)
+        double [:, :] mem_stereo_float64_o = numpy.empty((1024,3), float64)
+
+    l_int16 = [mem_mono_int16_e, mem_mono_int16, mem_stereo_int16, mem_stereo_int16_o]
+    l_float32 = [mem_mono_float32_e, mem_mono_float32, mem_stereo_float32, mem_stereo_float32_o]
+    l_float64 = [mem_mono_float64_e, mem_mono_float64, mem_stereo_float64, mem_stereo_float64_o]
+    return l_int16, l_float32, l_float64
+
+cpdef bint is_type_soundobject(object_):
     """
     Check if the given object is a soundobject type
     
@@ -2999,7 +3402,7 @@ cdef bint is_type_soundobject(object_):
     else:
         return False;
 
-cdef bint is_type_ndarray(object_):
+cpdef bint is_type_ndarray(object_):
     """
     Check if the given object is an ndarray type
     :param object_: python object to check
@@ -3010,9 +3413,9 @@ cdef bint is_type_ndarray(object_):
     else:
         return False;
 
-cdef bint is_valid_dtype(array_, type_=None):
+cpdef bint is_valid_dtype(array_, type_=None) except *:
     """
-    Check if a numpy array datatype match the datatype passed as argument 
+    CHECK IF A NUMPY ARRAY DATATYPE MATCH THE DATATYPE PASSED AS ARGUMENT 
     
     :param array_: Array to check, numpy.ndarray (any shapes)
     :param type_ : Python string or list; such as 'int16' or ['int16', 'float32'] 
@@ -3024,47 +3427,42 @@ cdef bint is_valid_dtype(array_, type_=None):
     # otherwise type_ must be a string representing the datatype
     else:
         if not (PyObject_IsInstance(type_, str) or PyObject_IsInstance(type_, list)):
-            raise ValueError("\nArgument type_ must be a string such as "
-                             "'int16' or 'float32' or a list containing strings got %s " % type(type_))
+            raise ValueError(message48 % array_.dtype)
 
     # Check the Data-type of the array’s elements.
     if PyObject_HasAttr(array_, 'dtype'):
         if PyObject_IsInstance(type_, list):
             if array_.dtype in type_:
                 return True
-            else:
-                return False
+
         elif PyObject_IsInstance(type_, str):
                 if array_.dtype == type_:
                     return True
-                else:
-                    return False
-    else:
-        return False
 
-# TODO CHECK THIS METHOD (NOT WORKING WITH MEMORYVIEW)
-cdef bint is_valid_array(array_):
+    return False
+
+
+cpdef bint is_valid_array(array_):
     """
-    CHECK IF GIVEN ARRAY (MONO OR STEREO) IS VALID OR NOT (ARRAY TYPE IS NOT CHECKED)
+    CHECK IF GIVEN ARRAY (MONO OR STEREO) IS VALID OR NOT (ARRAY TYPE IS NOT CHECKED, ONLY SHAPES)
     
     :param array_: sndarray; Mono or stereo sndarray representing sound samples 
     :return: Return a Cython object bint True | False 
     """
     if PyObject_HasAttr(array_, 'shape'):
+        # mono
         if len(array_.shape) == 1:
-            return True  # mono sound
+            return True
+
+        # stereo
         elif len(array_.shape) == 2:
             if array_.shape[1] == 2:
                 return True # stereo sound
-            else:
-                return False
-        else:
-            return False
-    else:
-        return False
+
+    return False
 
 
-cdef bint is_valid_mono_array(array_):
+cpdef bint is_valid_mono_array(array_):
     """
     DETERMINE IF ARRAY SAMPLES (MONO) IS VALID OR NOT (samples, ) 
     
@@ -3078,22 +3476,13 @@ cdef bint is_valid_mono_array(array_):
             if isinstance(array_, cython.view.memoryview):
                 if is_valid_dtype(numpy.asarray(array_)):
                     return True
-                else:
-                    return False
             else:
                 if is_valid_dtype(array_):
                     return True  # mono sound
-                else:
-                    return False
-        elif len(array_.shape) >1:
-            return False
-        else:
-            return False
-    else:
-        return False
+    return False
 
 
-cdef bint is_valid_stereo_array(array_):
+cpdef bint is_valid_stereo_array(array_):
     """
     DETERMINE IF ARRAY SAMPLES (STEREO) IS A VALID OR NOT (samples, 2)
     
@@ -3108,23 +3497,15 @@ cdef bint is_valid_stereo_array(array_):
                 if isinstance(array_, cython.view.memoryview):
                     if is_valid_dtype(numpy.asarray(array_))  :
                         return True
-                    else: return False
                 else:
                     if is_valid_dtype(array_):
                         return True  # mono sound
-                    else:
-                        return False
-            else:
-                return False
-        else:
-            return False
-    else:
-        return False
+    return False
 
 
-cdef bint is_monophonic(array_):
+cpdef bint is_monophonic(array_):
     """
-    CHECK IF A SOUND ARRAY IS MONOPHONIC OR NOT 
+    CHECK IF A SOUND ARRAY IS MONOPHONIC (ONLY COMPATIBLE WITH FLOAT DATATYPE)
     
     * Input: Array_ must be a numpy.ndarray type float_, float32 or float64
     
@@ -3137,23 +3518,15 @@ cdef bint is_monophonic(array_):
             if isinstance(array_, cython.view.memoryview):
                 if numpy.asarray(array_).dtype in (float_, float32, float64):
                     return True
-                else:
-                    return False
             elif isinstance(array_, numpy.ndarray):
                 if array_.dtype in (float_, float32, float64):
                     return True
-                else:
-                    return False
-            else:
-                return False
-        else:
-            return False
-    else:
-        return False
 
-cdef bint is_stereophonic(array_):
+    return False
+
+cpdef bint is_stereophonic(array_):
     """
-    CHECK IF A SOUND ARRAY IS STEREOPHONIC OR NOT
+    CHECK IF A SOUND ARRAY IS STEREOPHONIC (ONLY COMPATIBLE WITH FLOAT DATATYPE)
     
     * Input: Array_ must be a numpy.ndarray type float_, float32 or float64
     
@@ -3166,30 +3539,21 @@ cdef bint is_stereophonic(array_):
             if len(arr.shape) == 2 and arr.shape[1] == 2:
                 if arr.dtype in (float_, float32, float64):
                     return True
-                else:
-                    return False
-            else:
-                return False
+
         elif isinstance(array_, numpy.ndarray):
             if len(array_.shape) == 2 and array_.shape[1] == 2:
                 if array_.dtype in (float_, float32, float64):
                     return True
-                else:
-                    return False
-            else:
-                return False
-        else:
-            return False
-    else:
-        return False
+    return False
 
 cpdef float sound_length(sound_, int fs_) except *:
     """
     RETURN SOUND LENGTH IN SECONDS 
     
-    Sound can be a pygame.mixer.Sound object or a numpy ndarray representing a mono or stereo sound.
+    Sound can be a pygame.mixer.Sound object or a numpy ndarray (datatype int16 or float32) representing a mono 
+    or stereo sound 
     
-    :param sound_: pygame.Sound | ndarray; pygame.mixer.Sound mono or stereo 
+    :param sound_: pygame.Sound | ndarray (datatype int16 or float32); pygame.mixer.Sound mono or stereo 
     :param fs_   : float; sample rate
     :return      : float; return sound length in seconds. 
     """
@@ -3201,21 +3565,18 @@ cpdef float sound_length(sound_, int fs_) except *:
         return <float>(pygame.sndarray.samples(sound_).shape[0] / <float>fs_)
 
     elif is_type_ndarray(sound_):
+        if is_valid_array(sound_):
+            if is_valid_dtype(sound_):
+                return <float>(sound_.shape[0] / <float>fs_)
 
-        try:
-            sound_array = pygame.sndarray.samples(sound_)
-        except:
-            raise ValueError(message39)
+    elif isinstance(sound_, cython.view.memoryview):
+        arr = numpy.asarray(sound_)
+        if is_valid_array(sound_):
+            print(arr.dtype)
+            if arr.dtype in (int16, float32):
+                return <float>(sound_.shape[0] / <float>fs_)
+    raise ValueError(message30)
 
-        if is_valid_array(sound_array):
-            if is_valid_dtype(sound_array):
-                return <float>(sound_array.shape[0] / <float>fs_)
-            else:
-                raise ValueError(message30)
-        else:
-            raise ValueError(message30)
-    else:
-        raise ValueError(message30)
 
 cpdef dict sound_values(sound_):
     """
@@ -3236,18 +3597,20 @@ cpdef dict sound_values(sound_):
         raise ValueError(message39)
 
     if is_valid_mono_array(sound_array):
-        ...
+        pass
     elif is_valid_stereo_array(sound_array):
-        ...
+        pass
     else:
         raise ValueError(message30)
 
+    # mono
     if len(sound_array.shape) == 1:
         return {
                 "min":round(<float>amin(sound_array[:]), 4),
                 "avg":round(<float>average(sound_array[:]), 4),
                 "max":round(<float>amax(sound_array[:]), 4)
         }
+    # stereo
     elif len(sound_array.shape) == 2:
 
         c1 = {
@@ -3284,14 +3647,14 @@ cpdef void display_sound_values(sound_) except *:
         raise ValueError(message39)
 
     if is_valid_mono_array(sound_array):
-        ...
+        pass
     elif is_valid_stereo_array(sound_array):
-        ...
+        pass
     else:
         raise ValueError(message30)
 
     if len(sound_array.shape) == 1:
-         printf("\nMono sound values {min:9f} {average:5f} {max:9f}".format(
+         printf("\nMonophonic min:{min:9f} avg:{average:5f} max:{max:9f}".format(
              min     = round(amin(sound_array), 4),
              average = round(average(sound_array), 4),
              max     = round(amax(sound_array), 4)).encode('utf-8'))
@@ -3309,9 +3672,43 @@ cpdef void display_sound_values(sound_) except *:
         raise ValueError(message30)
 
 
+cpdef float rms_value_mono(sound_) except *:
+    """
+    RETURN RMS VALUE OF A MONOPHONIC SOUND (AVG RMS VALUES)
+    
+    :param sound_: pygame Sound; The sound must be a monophonic sound  
+    :return       : float; Returns RMS scalar value
+    """
+    try:
+        sound_array = pygame.sndarray.samples(sound_)
+    except:
+        raise ValueError(message39)
+
+    if is_valid_mono_array(sound_array):
+        pass
+    else:
+        raise ValueError(message11)
+
+    if sound_array.dtype == int16:
+        sound_array = normalize_array_mono(sound_array)
+
+    elif sound_array.dtype == float32:
+        pass
+    else:
+        raise ValueError(message27 % sound_array.dtype)
+
+    cdef:
+        float [::1] samples_norm = sound_array
+        int n0 = <object>sound_array.shape[0]
+
+    assert n0 != 0, message12
+
+    cdef float centre   = <float>(10.0 * log10(numpy.sum(numpy.square(samples_norm)) / <float>n0))
+    return centre
+
 cpdef rms_values_stereo(sound_):
     """
-    RETURN RMS VALUES OF A STEREO SOUND (RETURN LEFT, RIGHT CENTRE RMS VALUES)
+    RETURN RMS VALUES FOR A GIVEN STEREO SOUND (RETURN LEFT, RIGHT CENTRE RMS VALUES)
     
     :param sound_: pygame Sound; The sound must be a stereophonic sound  
     :return       : Return a python tuple of scalars values (double) representing the RMS
@@ -3323,14 +3720,14 @@ cpdef rms_values_stereo(sound_):
         raise ValueError(message39)
 
     if is_valid_stereo_array(sound_array):
-        ...
+        pass
     else:
         raise ValueError(message14)
 
     if sound_array.dtype == int16:
         sound_array = normalize_array_stereo(sound_array)
     elif sound_array.dtype == float32:
-        ...
+        pass
     else:
         raise ValueError(message27 % sound_array.dtype)
 
@@ -3364,7 +3761,7 @@ cpdef void show_rms_values(sound):
     if is_valid_mono_array(samples):
         if samples.dtype == int16:
             samples = normalize_array_mono(samples)
-            
+
     elif is_valid_stereo_array(samples):
         if samples.dtype == int16:
             samples = normalize_array_stereo(samples)
@@ -3374,194 +3771,35 @@ cpdef void show_rms_values(sound):
     cdef int channel_number = len(samples.shape)
 
     cdef:
-        int n0 = <object>sound.shape[0]
-        float [:, :] norm_stereo = samples if channel_number==2 else empty((n0, 2, float32))
-        float [:] norm_mono = samples if channel_number==1 else empty(n0, float32)
+        int n0 = <object>samples.shape[0]
+        float [:, :] norm_stereo = samples if channel_number==2 else empty((n0, 2), float32)
+        float [::1] norm_mono = samples if channel_number==1 else empty(n0, float32)
         int n = 2 * n0
         float rms_left, rms_right, rms_stereo, rms_center
 
-    assert n0 != 0, message12
+    if n0 == 0:
+        raise ValueError(message12)
 
     if channel_number == 1:
-        rms_center = <float>(10.0 * log10(numpy.sum(numpy.square(norm_mono[:])) / <float>n0))
-        printf("\nrms_center={centre:8f})".format(centre=round(rms_center, 4)).encode('utf-8'))
+        rms_center = <float>(10.0 * log10(numpy.sum(numpy.square(norm_mono)) / <float>n0))
+        printf("\nrms={centre:8f})".format(centre=round(rms_center, 4)).encode('utf-8'))
 
     elif channel_number == 2:
         rms_left   = <float>(10.0 * log10(numpy.sum(numpy.square(norm_stereo[:, 0])) / <float>n0))
         rms_right  = <float>(10.0 * log10(numpy.sum(numpy.square(norm_stereo[:, 1])) / <float>n0))
         rms_stereo = <float>(10.0 * log10(numpy.sum(numpy.square(norm_stereo[:, :])) / <float>n))
-        printf("\nrms_left={left:8f} rms_right={right:8f} "
-               "rms_center={centre:8f})".format(left=round(rms_left, 4),
+        printf("\nleft={left:8f} right={right:8f} "
+               "centre={centre:8f})".format(left=round(rms_left, 4),
                 right=round(rms_right, 4), centre=round(rms_stereo, 4)).encode('utf-8'))
     else:
         raise ValueError(message30)
 
 
-cpdef normalize_sound(sound_):
-    """
-    NORMALIZE A PYGAME SOUND OBJECT (STEREO OR MONOPHONIC), RETURN A NUMPY ARRAY 
-    
-    :param sound_: pygame.Sound; Pygame stereo sound object  
-    :return      : Return a sndarray python array type (n, ) or (n, 2) object representing 
-    a sound with float values [ -1.0 ... +1.0 ] 
-    """
-
-    if not is_type_soundobject(sound_):
-        raise ValueError(message23 % 1)
-
-    try:
-        sound_array = pygame.sndarray.samples(sound_)
-    except:
-        raise ValueError(message39)
-
-    # mono array
-    if is_valid_mono_array(sound_array):
-        # Array is already normalized
-        if sound_array.dtype == float32:
-            return sound_array
-
-    # stereo array
-    elif is_valid_stereo_array(sound_array):
-        # Array is already normalized (float32)
-        if sound_array.dtype==float32:
-            return sound_array
-    else:
-        raise ValueError(message30)
-
-    cdef:
-        int channel_number = len(sound_array.shape)
-        int width          = <object>sound_array.shape[0]
-        short [::1] array_mono = sound_array if channel_number == 1 else empty(width, int16)
-        short [:, :] array_stereo = sound_array if channel_number == 2 else empty((width, 2), int16)
-        float [:, :] stereo_samples = empty((width, 2), float32)
-        float [::1] mono_sample = empty(width, float32)
-        int i
-        float s0, s1
-
-    # stereo
-    if channel_number == 2:
-
-        with nogil:
-            for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                s0 = array_stereo[i, 0]
-                s1 = array_stereo[i, 1]
-                if s0 > 0:
-                    stereo_samples[i, 0] = <float>(s0 * INV_SHRT_MAX)
-
-                elif s0 < 0:
-                    stereo_samples[i, 0] = <float>(-s0 * INV_SHRT_MIN)
-
-                else:
-                    stereo_samples[i, 0] = 0.0
-
-                if s1 > 0:
-                    stereo_samples[i, 1] = <float>(s1 * INV_SHRT_MAX)
-
-                elif s1 < 0:
-                    stereo_samples[i, 1] = <float>(-s1 * INV_SHRT_MIN)
-
-                else:
-                    stereo_samples[i, 1] = 0.0
-        return asarray(stereo_samples)
-
-    # mono
-    elif channel_number == 1:
-
-        with nogil:
-            for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-                s0 = array_mono[i]
-
-                if s0 > 0:
-                    mono_sample[i] = <float>(s0 * INV_SHRT_MAX)
-
-                elif s0 < 0:
-                    mono_sample[i] = <float>(-s0 * INV_SHRT_MIN)
-
-                else:
-                    mono_sample[i] = 0.0
-
-        return asarray(mono_sample)
-
-    else:
-        raise ValueError(message30)
-
-
-
-cpdef normalize_array_mono(short [:] samples):
-    """
-    TAKE A NUMPY.NDARRAY AS INPUT (TYPE INT16) AND NORMALIZED THE VALUES (FLOAT32)
-    
-    :param samples: numpy.ndarray; Python numpy.ndarray type int16 representing the sound samples
-    :return       : a memoryview of an numpy.ndarray, with values [-1.0 ... +1.0] type python float (cython.double). 
-    Contiguous array
-    """
-    if not is_valid_mono_array(samples):
-        raise ValueError(message11)
-
-    cdef:
-        int width = <object>samples.shape[0]
-        float [::1] new_array = empty(width, float32)
-        int i
-        float s0
-
-    with nogil:
-        for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-            s0 = samples[i]
-            if s0 > 0:
-                new_array[i] = s0 * INV_SHRT_MAX
-            elif s0 < 0:
-                new_array[i] = -s0 * INV_SHRT_MIN
-            else:
-                new_array[i] = 0.0
-    return new_array
-
-cpdef float [:, :] normalize_array_stereo(short [:, :] samples_):
-    """
-    TAKE AN ARRAY INT16 AS INPUT (SOUND SAMPLES) AND RETURN A NORMALIZED SAMPLES (FLOAT32)
-    
-    :param samples_: ndarray; reference Sound samples into an array
-    :return        : memoryview type [:, :] with floats values representing a normalized sound 
-    """
-
-    if not is_valid_stereo_array(samples_):
-        raise ValueError(message14)
-
-    cdef:
-        int width = <object>samples_.shape[0]
-        int i
-        float s0, s1
-        float [:, :] new_array = empty((width, 2), float32)
-
-    with nogil:
-        for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-            s0 = samples_[i, 0]
-            s1 = samples_[i, 1]
-            if s0 > 0:
-                new_array[i, 0] = s0 * INV_SHRT_MAX
-
-            elif s0 < 0:
-                new_array[i, 0] = -s0 * INV_SHRT_MIN
-
-            else:
-                new_array[i, 0] = 0.0
-
-            if s1 > 0:
-                new_array[i, 1] = s1 * INV_SHRT_MAX
-
-            elif s1 < 0:
-                new_array[i, 1] = -s1 * INV_SHRT_MIN
-
-            else:
-                new_array[i, 1] = 0.0
-
-    return new_array
-
-
 cpdef inverse_normalize_mono(float [:] samples):
     """
-    TAKE AN ARRAY FLOAT AS INPUT (SOUND SAMPLES) AND RETURN A PYGAME.MIXER.SOUND 
+    TAKE AN ARRAY FLOAT AS INPUT (SOUND SAMPLES FLOAT32) AND RETURN A PYGAME.MIXER.SOUND 
     
-    :param samples: ndarray; Take a 2d numpy.ndarray type float (stereo)  
+    :param samples: ndarray; Take a 2d numpy.ndarray type float32 (stereo)  
     :return       : return a pygame.sound object ready to be play on the mixer
     """
     if not is_monophonic(samples):
@@ -3571,6 +3809,9 @@ cpdef inverse_normalize_mono(float [:] samples):
         int width = <object>samples.shape[0]
         int i
         float s0, s1
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -3599,6 +3840,9 @@ cpdef inverse_normalize_stereo(float [:, :] samples):
         int width = <object>samples.shape[0]
         int i
         float s0, s1
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -3636,6 +3880,9 @@ cpdef inverse_normalize_stereo_asarray(float [:, :] samples_):
         int i
         float s0, s1
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             s0 = samples_[i, 0]
@@ -3672,6 +3919,9 @@ cpdef inverse_normalize_mono_asarray(float [:] samples_):
         int i
         float s0, s1
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             s0 = samples_[i]
@@ -3705,15 +3955,16 @@ cpdef time_shift_mono_int16(short [:] samples_, float shift_, int sample_rate_):
         int width = <object>samples_.shape[0]
         float max_length = <float>width/<float>sample_rate_ * 1000
 
-    if 0.0 < shift_:
-        raise ValueError(message24 % "shift_")
-    if shift_ >= max_length:
-        raise ValueError(message35 % ("shift_", shift_))
+    if not (0.0 <= shift_ <= max_length):
+        raise ValueError(message45 % (0, shift_, max_length, shift_))
 
     cdef:
         short [::1] new_array = zeros(width, int16)
         int i, l
         int s = <int>((shift_ / 1000.0) * sample_rate_)
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(s, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -3745,15 +3996,16 @@ cpdef time_shift_mono_float32(float [:] samples_, float shift_, int sample_rate_
         int width = <object>samples_.shape[0]
         float max_length = <float>width/<float>sample_rate_ * 1000
 
-    if 0.0 < shift_:
-        raise ValueError(message24 % "shift_")
-    if shift_ >= max_length:
-        raise ValueError(message35 % ("shift_", shift_))
+    if not (0.0 <= shift_ <= max_length):
+        raise ValueError(message45 % (0, shift_, max_length, shift_))
 
     cdef:
         float [::1] new_array = zeros(width, float32)
         int i, l
         int s = <int>((shift_ / 1000.0) * sample_rate_)
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(s, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -3784,15 +4036,16 @@ cpdef time_shift_stereo_int16(short [:, :] samples_, float shift_, int sample_ra
         int width = <object>samples_.shape[0]
         float max_length = <float>width/<float>sample_rate_ * 1000
 
-    if 0.0 < shift_:
-        raise ValueError(message24 % "shift_")
-    if shift_ >= max_length:
-        raise ValueError(message35 % ("shift_", shift_))
+    if not (0.0 <= shift_ <= max_length):
+        raise ValueError(message45 % (0, shift_, max_length, shift_))
 
     cdef:
         short [:, :] new_array = zeros((width, 2), int16)
         int i, l
         int s = <int>((shift_ / 1000.0) * sample_rate_)
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(s, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -3824,16 +4077,17 @@ cpdef time_shift_stereo_float32(float [:, :] samples_, float shift_, int sample_
         int width = <object>samples_.shape[0]
         float max_length = <float>width/<float>sample_rate_ * 1000
 
-    if 0.0 < shift_:
-        raise ValueError(message24 % "shift_")
-    if shift_ >= max_length:
-        raise ValueError(message35 % ("shift_", shift_))
+    if not (0.0 <= shift_ <= max_length):
+        raise ValueError(message45 % (0, shift_, max_length, shift_))
 
     cdef:
 
         float [:, :] new_array = zeros((width, 2), float32)
         int i, l
         int s = <int>((shift_ / 1000.0) * sample_rate_)
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(s, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -3866,12 +4120,13 @@ cpdef time_shift_channel(short [:, :] samples_, float shift_, int sample_rate_, 
         int width = <object>samples_.shape[0]
         float max_length = <float>width/<float>sample_rate_ * 1000
 
-    if 0.0 < shift_:
-        raise ValueError(message24 % "shift_")
-    if shift_ >= max_length:
-        raise ValueError(message35 % ("shift_", shift_))
+    if width == 0:
+        raise ValueError(message12)
 
-    if channel_ not in [1, 2]:
+    if not (0.0 <= shift_ <= max_length):
+        raise ValueError(message45 % (0, shift_, max_length, shift_))
+
+    if channel_ not in [0, 1]:
         raise ValueError(message7)
 
     cdef:
@@ -3896,59 +4151,26 @@ cpdef time_shift_channel(short [:, :] samples_, float shift_, int sample_rate_, 
     return make_sound(asarray(new_array))
 
 
-cpdef set_volume_beta(sound_, float volume_=1.0):
-    """
-    CHANGE VOLUME INPLACE 
-    
-    * Technique using numpy.array (slower than set_volume & pygame class set_volume )
-    
-    :param sound_: pygame Sound; Sound effect (mono or stereophonic)
-    :param volume_: float; Volume (must be in range [0.0 ... 1.0]) 
-    :return: void
-    """
-    if volume_ < 0.0:
-        volume_ = 0.0
-    if volume_ > 1.0:
-        return sound_
-
-    if not is_type_soundobject(sound_):
-        raise ValueError(message23 % 1)
-
-    try:
-        sound_array  = pygame.sndarray.samples(sound_)
-    except:
-        raise ValueError(message39)
-
-    if is_valid_stereo_array(sound_array):
-        ...
-    if is_valid_mono_array(sound_array):
-        ...
-    else:
-        raise ValueError(message30)
-
-    sound_array = asarray(sound_array * volume_, sound_array.dtype)
-
-
-cpdef set_volume(sound_, float volume_=1.0):
+cpdef void set_volume(sound_, float volume_=1.0) except *:
     """
     SET THE PLAYBACK VOLUME (INPLACE)
     
     :param sound_ : pygame.mixer.Sound object (stereo or mono) 
-    :param volume_: float; volume must be in range [0.0 ... 1.0], 
+    :param volume_: float; volume must be in range [0.0 pass 1.0], 
                     volume out of range will be reverted to default value 1.0
                     max volume is 1.0 and lowest 0.0
     :return       : void (sound volume changed inplace)
     """
 
-    if 0.0 >= volume_ >= 1.0:
-        volume_ = 1.0
+    if volume_ < 0.0:
+        volume_ = 0.0
+
+    # The sound sample will remains un-touched
+    if volume_ > 1.0:
+        pass
 
     if not is_type_soundobject(sound_):
         raise ValueError(message23 % 1)
-
-    # return without changing the sound volume
-    if volume_ == 1.0:
-        return sound_
 
     try:
         sound_array  = pygame.sndarray.samples(sound_)
@@ -3956,9 +4178,9 @@ cpdef set_volume(sound_, float volume_=1.0):
         raise ValueError(message39)
 
     if is_valid_stereo_array(sound_array):
-        ...
-    if is_valid_mono_array(sound_array):
-        ...
+        pass
+    elif is_valid_mono_array(sound_array):
+        pass
     else:
         raise ValueError(message30)
 
@@ -3974,6 +4196,8 @@ cpdef set_volume(sound_, float volume_=1.0):
             sound_array if (channel_number == 2 and sound_array.dtype==int16) else empty((width, 2), int16)
         float [:, :] array_stereo_float32 = \
             sound_array if (channel_number == 2 and sound_array.dtype==float32) else empty((width, 2), float32)
+    if width == 0:
+        raise ValueError(message12)
 
     if channel_number == 2:
         if sound_array.dtype == float32:
@@ -4003,26 +4227,37 @@ cpdef set_volume(sound_, float volume_=1.0):
 # TODO NEED TESTING AND CHECK PROFILING PERFORMANCES
 cpdef reverse_sound_beta(sound_):
     """
+    REVERSE A SOUND (MAKE A SOUND PLAY BACKWARDS)
     
-    :param sound_: 
-    :return: 
+    :param sound_: pygame Sound; monophonic or stereophonic sound to play backwards
+    :return: pygame Sound; return a sound playing backwards 
     """
     try:
-        sound_array = pygame.sndarray.samples(sound_)
+        sound_array = pygame.sndarray.array(sound_)
     except:
         raise ValueError(message39)
 
+    cdef:
+        int width = sound_array.shape[0]
+
+    if width == 0:
+        raise ValueError(message12)
+
     if is_valid_stereo_array(sound_array):
-        sound_array_ = sound_array[::-1, :]
+        sound_array_ = numpy.ascontiguousarray(sound_array[::-1, :])
+
     elif is_valid_mono_array(sound_array):
-        sound_array_ = sound_array[::-1]
+        sound_array_ = numpy.ascontiguousarray(sound_array[::-1])
+
     else:
         raise ValueError(message30)
-    return pygame.sndarray.make_sound(sound_array_)
+
+    return make_sound(sound_array_)
+
 
 cpdef reverse_stereo_int16(short [:, :] samples_):
     """
-    REVERSE SOUND EFFECT 
+    REVERSE SOUND EFFECT (PLAY BACKWARD)
     
     :param samples_: numpy.ndarray; Numpy.ndarray int16 values stereo representing a sound effect
     :return        : pygame.mixer.Sound; Return a sound object.
@@ -4034,6 +4269,9 @@ cpdef reverse_stereo_int16(short [:, :] samples_):
         int width = <object>samples_[:, 0].shape[0]
         short [:, :] new_array = zeros((width, 2), dtype=int16)
         int i = 0, j =0
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(width-1, 0, -1, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4081,6 +4319,9 @@ cpdef reverse_mono_int16(short [:] samples_):
         short [:] new_array = zeros(width, dtype=int16)
         int i = 0, j =0
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width - 1, 0, -1, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             j = width - i
@@ -4103,6 +4344,9 @@ cpdef reverse_mono_float32(float [:] samples_):
         float [:] new_array = zeros(width, dtype=float32)
         int i = 0, j =0
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width - 1, 0, -1, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             j = width - i
@@ -4113,7 +4357,7 @@ cpdef reverse_mono_float32(float [:] samples_):
 
 cpdef reverse_sound(sound_):
     """
-    REVERSE A SOUND 
+    REVERSE A SOUND (MONOPHONIC OR STEREOPHONIC)
         
     :param sound_: pygame sound; Pygame sound effect to reverse
     :return: return a pygame sound effect reversed (playing backward)
@@ -4124,30 +4368,34 @@ cpdef reverse_sound(sound_):
     except:
         raise ValueError(message39)
 
-    if is_valid_mono_array(sound_array):
-        ...
-    elif is_valid_stereo_array(sound_array):
-        ...
-    else:
-        raise ValueError(message30)
-
     cdef:
         int width = sound_array.shape[0]
         int channel_number = len(sound_array.shape)
 
+    if width == 0:
+        raise ValueError(message12)
+
+    if is_valid_mono_array(sound_array):
+        pass
+    elif is_valid_stereo_array(sound_array):
+        pass
+    else:
+        raise ValueError(message30)
+
+    cdef:
         short [::1] array_mono_int16 =  \
             sound_array if (channel_number == 1 and sound_array.dtype==int16) else empty(width, int16)
         float [::1] array_mono_float32 = \
             sound_array if (channel_number == 1 and sound_array.dtype==float32) else empty(width, float32)
         short [:, :] array_stereo_int16 = \
-            sound_array if (channel_number == 2 and sound_array.dtype==int16) else empty(width, int16)
+            sound_array if (channel_number == 2 and sound_array.dtype==int16) else empty((width, 2), int16)
         float [:, :] array_stereo_float32 = \
-            sound_array if (channel_number == 2 and sound_array.dtype==float32) else empty(width, float32)
+            sound_array if (channel_number == 2 and sound_array.dtype==float32) else empty((width, 2), float32)
         int i = 0, j =0
         short [::1] new_array_mono_int16 = empty(width, int16)
         float [::1] new_array_mono_float32 = empty(width, float32)
-        short [:, :] new_array_stereo_int16 = empty(width, int16)
-        float [:, :] new_array_stereo_float32 = empty(width, float32)
+        short [:, :] new_array_stereo_int16 = empty((width, 2), int16)
+        float [:, :] new_array_stereo_float32 = empty((width, 2), float32)
 
     if channel_number == 1:
         if sound_array.dtype == numpy.int16:
@@ -4198,15 +4446,19 @@ cpdef invert_array_mono_int16(short [:] samples_):
         int width = <object>samples_.shape[0]
         int i     = 0
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
 
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+
             if samples_[i] > 0:
                 samples_[i] = <short>(-samples_[i] - 1)
             else:
                 samples_[i] = <short>(abs(samples_[i]) - 1)
 
-    return make_sound(asarray(samples_, int16))
+    return make_sound(asarray(samples_))
 
 
 cpdef invert_array_mono_float32(float [:] samples_):
@@ -4223,6 +4475,9 @@ cpdef invert_array_mono_float32(float [:] samples_):
     cdef:
         int width = <object>samples_.shape[0]
         int i     = 0
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
 
@@ -4246,6 +4501,9 @@ cpdef invert_array_stereo_int16(short [:, :] samples_):
         int width = <object>samples_.shape[0]
         int i     = 0
         short c1, c2
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
 
@@ -4281,6 +4539,9 @@ cpdef invert_array_stereo_float32(float [:, :] samples_):
         int i     = 0
         short c1, c2
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
 
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4290,9 +4551,9 @@ cpdef invert_array_stereo_float32(float [:, :] samples_):
     return make_sound(asarray(samples_))
 
 
-cpdef add_mono(sound0, sound1):
+cpdef add_mono(sound_array0, sound_array1):
     """
-    MIX TWO DATA SAMPLES TOGETHER  
+    MIX TWO DATA SAMPLES (ARRAY) TOGETHER  
     
     Both monophonic data samples can be either int16 or float32 data type. 
     Array(s) type int16 will be normalized with the method normalize_array_mono before being added together.
@@ -4300,10 +4561,8 @@ cpdef add_mono(sound0, sound1):
     LIBROSA time stretching algorithm. time_stretching algorithm takes a lots of cpu resources.
     Prefer sounds with identical length and try to normalized the sounds prior calling this method to 
     get the best performances possible.
-    
-        
-    * Compatible with monophonic sounds (both data samples must be monophonic type int16 or float32)
-    
+          
+    * Compatible with monophonic sounds (both data samples must be monophonic type int16 or float32)  
     * Capping values to 1.0, -1.0. 
     To mix two sounds together equally, you just add them together.
     If you know that both sounds will frequently be at or near full amplitude 
@@ -4312,21 +4571,21 @@ cpdef add_mono(sound0, sound1):
     
     * Returned sound effect will be monophonic or stereophonic to comply with Pygame mixer settings
     
-    :param sound0: numpy.ndarray; Array shape (n,) monophonic with datatype int16 or float32  
-    :param sound1: numpy.ndarray; Array shape (n,) monophonic with datatype int16 or float32
+    :param sound_array0: numpy.ndarray; Array shape (n,) monophonic with datatype int16 or float32  
+    :param sound_array1: numpy.ndarray; Array shape (n,) monophonic with datatype int16 or float32
     :return: pygame.mixer.Sound. stereophonic if the mixer is setup with 2 channels or monophonic if mixer is set 
     with a single channel
     """
 
-    if not is_valid_mono_array(sound0):
+    if not is_valid_mono_array(sound_array0):
         raise ValueError(message11)
 
-    if not is_valid_mono_array(sound1):
+    if not is_valid_mono_array(sound_array1):
         raise ValueError(message11)
 
     cdef:
-        int width0 = <object>sound0.shape[0]
-        int width1 = <object>sound1.shape[0]
+        int width0 = <object>sound_array0.shape[0]
+        int width1 = <object>sound_array1.shape[0]
         int minimum = min(width0, width1)
         int maximum = max(width0, width1)
         #  normalized
@@ -4336,17 +4595,17 @@ cpdef add_mono(sound0, sound1):
         int i = 0
         float r
 
-    if is_valid_dtype(sound0, 'float32'):
-        s0 = sound0
+    if is_valid_dtype(sound_array0, 'float32'):
+        s0 = sound_array0
     else:
-        s0 = normalize_array_mono(sound0)
+        s0 = normalize_array_mono(sound_array0)
 
-    if is_valid_dtype(sound1, 'float32'):
-        s1 = sound1
+    if is_valid_dtype(sound_array1, 'float32'):
+        s1 = sound_array1
     else:
-        s1 = normalize_array_mono(sound1)
+        s1 = normalize_array_mono(sound_array1)
 
-    if width0 == 0 or width1 == 0:
+    if minimum == 0:
         raise ValueError(message12)
 
     # stretch shortest sound if size is not equal
@@ -4361,6 +4620,7 @@ cpdef add_mono(sound0, sound1):
             new_array[i] = (s0[i] + s1[i]) * 0.5
 
     return inverse_normalize_mono(new_array)
+
 
 cpdef adding_stereo_int16(short [:, :] sound0, short[:, :] sound1):
     """
@@ -4389,6 +4649,9 @@ cpdef adding_stereo_int16(short [:, :] sound0, short[:, :] sound1):
         int minimum = min(width0, width1)
         int i = 0, r0, r1
         short [:, :] new_array = empty((minimum, 2), int16)
+
+    if minimum == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(0, minimum, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4468,7 +4731,7 @@ cpdef add_stereo(sound0, sound1):
         s1_ch0 = ascontiguousarray(sound1[:, 0])
         s1_ch1 = ascontiguousarray(sound1[:, 1])
 
-    if width0 == 0 or width1 == 0:
+    if minimum == 0:
         raise ValueError(message12)
 
     # time_stretch is not compatible with stereophonic data series
@@ -4495,13 +4758,15 @@ cpdef add_stereo(sound0, sound1):
 
 cpdef down_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
     """
-    DOWN SAMPLING STEREOPHONIC ARRAY (INT16)
+    DOWN SAMPLING STEREOPHONIC ARRAY (INT16) 
         
+    * Speed ip sound effect 
+    
     To downsample (also called decimate) your signal (it means to reduce the sampling rate), 
     or up-sample (increase the sampling rate) you need to interpolate between your data.
     
     :param samples_: numpy.ndarray; Numpy array shape(n, 2) int16 representing the sampling data (stereophonic)
-    :param n_: int; power of 2 for down-sampling
+    :param n_: int; division factor (power of 2 for down-sampling)
     :return: pygame.Sound; return a pygame sound down-sampled 
     """
     if not is_valid_stereo_array(samples_):
@@ -4529,6 +4794,9 @@ cpdef down_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
         short [:, :] new_array = zeros((width // n_, 2), int16)
         int i, c1
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             c1 = i // n_
@@ -4541,6 +4809,8 @@ cpdef down_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
 cpdef up_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
     """
     UP SAMPLING ARRAY (STEREOPHONIC INT16)
+    
+    * Slow down sound effect 
     
     :param samples_: numpy.ndarray; Array shape (n, 2) int16 representing the data samples (stereophonic)
     :param n_: int; power of two value for up sampling
@@ -4571,6 +4841,10 @@ cpdef up_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
         int width = <object>samples_.shape[0]
         short [:, :] new_array = zeros((width * n_, 2), int16)
         int i, c1
+
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width * n_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             c1 = i // n_
@@ -4583,7 +4857,10 @@ cpdef up_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
 cpdef slow_down_array_stereo(short [:, :] samples_, int n_):
     """
     CHANGE THE SPEED OF A GIVEN SOUND BY RESAMPLING THE DATA USING LINEAR APPROXIMATION
-   
+    
+    * Slow down sound effect 
+    * Final sound length will be length x n_ (with n>0)
+    
     Changing the sound speed is affecting its tempo, pitch and frequency content. 
     When reducing speed, all frequencies become lower. When increasing speed, all frequencies become higher.
     
@@ -4610,6 +4887,9 @@ cpdef slow_down_array_stereo(short [:, :] samples_, int n_):
         int i = 0, r = 0, ii = 0
         float a, b, inc0, inc1
         float c1 = 1.0 / <float>n_
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(0, (width - 1 - n_) * n_ , n_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4672,6 +4952,9 @@ cpdef panning_channels(short [::1] channel0_,
         float volume_left = <float>(c1 * (cos(c2) + sin(c2)))
         float volume_right= <float>(c1 * (cos(c2) - sin(c2)))
 
+    if width == 0:
+        raise ValueError(message12)
+
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             samples_[i, 0] = <short>(channel0_[i] * volume_left)
@@ -4690,7 +4973,7 @@ cpdef panning_sound(sound_, float angle_ = 0.0):
     * Compatible with stereo sound object only
     
     :param sound_ : Sound object: Pygame.Sound object (must be a stereo sound)  
-    :param angle_: float; Angle in degrees [-45.0 ... +45.0] -45 pan to the left + 45 pan to the right
+    :param angle_: float; Angle in degrees [-45.0 pass +45.0] -45 pan to the left + 45 pan to the right
     :return      : Sound; Return a pygame.Sound ready to be play on the mixer with the command play()  
     """
 
@@ -4709,6 +4992,9 @@ cpdef panning_sound(sound_, float angle_ = 0.0):
         float c1 = <float>sqrt(2.0)/2.0
         float volume_left = <float>(c1 * (cos(c2) + sin(c2)))
         float volume_right= <float>(c1 * (cos(c2) - sin(c2)))
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4729,7 +5015,7 @@ cpdef median_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
     """
 
     if not is_valid_stereo_array(samples_):
-        raise ValueError('\nArgument 1 is not a valid stereo array')
+        raise ValueError(message14)
 
     cdef:
         int i, j, l, k
@@ -4740,6 +5026,9 @@ cpdef median_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
         int *tmp_ch1 = <int *> malloc(dim * sizeof(int))
         int *tmp_0 = <int *> malloc(dim * sizeof(int))
         int *tmp_1 = <int *> malloc(dim * sizeof(int))
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4769,7 +5058,7 @@ cpdef average_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
     """
 
     if not is_valid_stereo_array(samples_):
-        raise ValueError('\nArgument 1 is not a valid stereo array')
+        raise ValueError(message14)
 
     cdef:
         int i, j, l
@@ -4777,6 +5066,9 @@ cpdef average_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
         short [:, :] new_array = zeros((width, 2), int16)
         int m = (dim - 1) >> 1
         float c0 = 0.0, c1 = 0.0
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
@@ -4826,14 +5118,18 @@ cpdef echo_f32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.
     cdef:
         float [:, :] sound = sndarray.samples(sound_).astype(dtype=float32, copy=False)
         int width = <object>sound.shape[0]
+        int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
         float [:, ::1] new_array = empty(
-            (width * echoes_ + <int>(delay_/1000.0 * <float>sample_rate_) * echoes_, 2), dtype=float32)
+            (width * echoes_ + c1 * echoes_, 2), dtype=float32)
         int i, j, l
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for j in prange(echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             for i in prange(width):
-                l = i + j * width + <int>(delay_/1000.0 * <float>sample_rate_) * j
+                l = i + j * width + c1 * j
                 new_array[l, 0], new_array[l, 1] = sound[i, 0]  / (2 ** j), sound[i, 1] / (2 ** j)
 
     return make_sound(asarray(new_array, dtype=int16))
@@ -4870,30 +5166,33 @@ cpdef echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
     cdef:
         short [:, :] sound_stereo = sndarray.samples(sound_).astype(dtype=int16, copy=False)
         int width = <object>sound_stereo.shape[0]
+        int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
         short [:, ::1] new_array = \
-            zeros((width * echoes_ + <int>(delay_/1000.0 * <float>sample_rate_) * echoes_, 2), dtype=int16)
+            zeros((width * echoes_ + c1 * echoes_, 2), dtype=int16)
         int i, j, l
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for j in prange(echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
             for i in prange(width):
-                l = i + j * width + <int>(delay_/1000.0 * <float>sample_rate_) * j
+                l = i + j * width + c1 * j
                 new_array[l, 0], new_array[l, 1] = sound_stereo[i, 0] >> j, sound_stereo[i, 1] >> j
 
     return make_sound(asarray(new_array, dtype=int16))
 
-
-cpdef create_echo_from_channels(short [:] channel0_, short [:] channel1_, short echoes_, int delay_=10000):
+# TODO WORKS BUT NEED RE-THINKING
+cpdef create_echo_from_channels(short [:] channel0_, short [:] channel1_,
+                                short echoes_, int delay_=10, int sample_rate_=44100):
     """
-    CREATES A NEW SOUND FROM TWO GIVEN DATA SAMPLES REPRESENTING CHANNEL0 AND CHANNEL1
-    
-    Modifying the array will change the Sound. The array will always be in the
-    format returned from pygame.mixer.get_init().
+    CREATES A NEW ECHO SOUND EFFECT FROM TWO GIVEN DATA SAMPLES REPRESENTING CHANNEL0 AND CHANNEL1
     
     :param channel0_: numpy.ndarray; Array shape (n, ) with datatype int16 representing the data samples on channel0
     :param channel1_: numpy.ndarray; Array shape (n, ) with datatype int16 representing the data samples on channel1
-    :param echoes_: integer; Number of consecutive echo(s) >= 0
-    :param delay_: integer; Time interval between echo(s) in samples number (t = samples/sample_rate) >0
+    :param echoes_  : integer; Number of consecutive echo(s) >= 0
+    :param delay_   : integer; Time interval between echo(s) in ms , default 10 milli seconds 
+    :param sample_rate_ : float; Sample rate, default 44100 hz
     :return: Return a pygame Sound object with echo(s)
     """
 
@@ -4903,74 +5202,95 @@ cpdef create_echo_from_channels(short [:] channel0_, short [:] channel1_, short 
     if not is_valid_mono_array(channel1_):
         raise ValueError()
 
+    if not (sample_rate_ in FS):
+        raise ValueError(message15 % (sample_rate_, FS))
+
     if not isinstance(echoes_, int):
         raise TypeError(message34 % ("echoes_", "int", type(echoes_)))
 
     if echoes_ < 0:
         raise ValueError(message35 % ("echoes_", 0, echoes_))
+
     elif echoes_ == 0:
         return make_sound(asarray(channel0_), dtype=int16)
 
     if not isinstance(delay_, int):
         raise TypeError(message34 % ("delay_", "int", type(delay_)))
 
-    if delay_ < 0:
-        raise ValueError(message35 % ("delay_", 0, delay_))
+    # if delay_ < 0:
+    #     raise ValueError(message35 % ("delay_", 0, delay_))
 
     cdef:
-        int width                    = <object>channel0_.shape[0]
-        short [:, ::1] new_array     = empty((width * echoes_ + delay_ * echoes_, 2), dtype=int16)
+        int width0 = len(channel0_)
+        int width1 = len(channel0_)
+        int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
+        short [:, ::1] new_array  = zeros((width0 * echoes_ + c1 * echoes_, 2), dtype=int16) if c1 > 0 else \
+            zeros((width0 * echoes_ - c1 * echoes_, 2), dtype=int16)
         int i, j, l
+
+
+    if (width0 == 0 or width1 == 0) or (width0 != width1):
+        raise ValueError(message12)
 
     with nogil:
         for j in prange(echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-            for i in prange(width):
-                l = i + j * width + delay_ * j
-                new_array[l, 0], new_array[l, 1] = channel0_[i] >> j, channel1_[i] >> j
+            for i in prange(width0):
+                l = i + j * width0 + c1 * j
+                new_array[l, 0] = new_array[l, 0] + channel0_[i] >> j
+                new_array[l, 1] = new_array[l, 1] + channel1_[i] >> j
 
     return make_sound(asarray(new_array, dtype=int16))
 
 
 
-cpdef create_rev_echo_from_sound(sound_, short echoes_, int delay_=10000):
+cpdef create_rev_echo_from_sound(sound_, short echoes_, int delay_=10000, int sample_rate_=44100):
     """
-    ECHO WITH A REVERSE EFFECT
-    
-    Creates a new array that directly references the samples in a Sound object.
-    Modifying the array will change the Sound. The array will always be in the
-    format returned from pygame.mixer.get_init().
+    ECHO EFFECT WITH VOLUME INCREASING 
     
     :param sound_ : pygame.mixer.Sound, Sound can be monophonic or stereophonic  
     :param echoes_: integer; Number of echo(s) >= 0
     :param delay_ : integer; Time interval between echo(s) in samples number (t = samples/sample_rate) >0
+    :param sample_rate_: int; Sample rate default is 44100 hz
     :return       : Return a new sound with an inverse echo effect 
     """
     if not isinstance(sound_, SOUNDTYPE):
         raise TypeError(message23 % "sound_")
+
+    if not (sample_rate_ in FS):
+        raise ValueError(message15 % (sample_rate_, FS))
+
     if not isinstance(echoes_, int):
         raise TypeError(message34 % ("echoes_", "int", type(echoes_)))
+
     if echoes_ < 0:
         raise ValueError(message24 % "echoes_")
+
     if not isinstance(delay_, int):
         raise TypeError(message34 % ("delay_", "int", type(delay_)))
+
     if delay_ < 0:
         raise ValueError(message24 % "delay_")
 
     # Channel separation
-    sound  = sndarray.samples(sound_).astype(dtype=int16, copy=False)
-    left_channel  = sound[:, 0]
-    right_channel = sound[:, 1]
+    try:
+        sound  = sndarray.samples(sound_).astype(dtype=int16, copy=False)
+    except:
+        raise ValueError(message39)
 
     cdef:
-        short [:] left_ch            = left_channel
-        short [:] right_ch           = right_channel
+        short [:] left_ch            = sound[:, 0]
+        short [:] right_ch           = sound[:, 1]
         int width                    = left_ch.shape[0]
-        short [:, ::1] new_array     = empty((width * echoes_ + delay_ * echoes_, 2), int16)
+        # int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
+        short [:, ::1] new_array     = zeros((width * echoes_ + delay_ * echoes_, 2), int16)
         int i, j, l, m
+
+    if width == 0:
+        raise ValueError(message12)
 
     with nogil:
         for j in prange(echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-            for i in range(width, 0, -1):
+            for i in range(width - 1, 0, -1):
                 l = i + j * width + delay_ * j
                 m = echoes_ - j
                 new_array[l, 0], new_array[l, 1] = left_ch[i] >> m, right_ch[i] >> m
@@ -4988,7 +5308,7 @@ HANNING = hanning(8192).astype(float32)
 DEF ONE_TWELVE = 1.0 / 12.0
 
 
-cdef pitchshift(sound_, int n_):
+cpdef pitchshift(sound_, int n_):
     """
     SOUND PITCH SHIFTING BY N SEMITONES
 
@@ -5001,8 +5321,8 @@ cdef pitchshift(sound_, int n_):
     if not is_type_soundobject(sound_):
         raise TypeError(message23 % "sound_")
 
-    if n_ <= 0:
-        raise ValueError(message35 % ("n_", 1, n_))
+    if n_ < 0:
+        raise ValueError(message35 % ("n_", 0, n_))
 
     sound_effect = None
 
@@ -5030,60 +5350,45 @@ cdef speedx_mono(numpy.ndarray[float32_t, ndim=1] input_array_, float factor_):
     :param factor_     : float; semitones value
     :return            : ndarray; Data samples with pitch adjusted to n semitones
     """
-    if not is_monophonic(input_array_):
-        raise ValueError(message28)
 
-    if factor_ < 0:
-        raise ValueError(message24 % "factor_")
-
-    cdef numpy.ndarray[float32_t, ndim=1] indices = \
-        round(numpy.arange(0, len(<object>input_array_), factor_)).astype(float32)
-
-    return input_array_[indices[indices < len(<object>input_array_)].astype(int)]
+    indices = numpy.round(numpy.arange(0, len(input_array_), factor_))
+    indices = indices[indices < len(input_array_)].astype(float32)
+    return input_array_[indices.astype(int)]
 
 
-cdef stretch_mono(numpy.ndarray[float32_t, ndim=1] snd_array_, float factor_):
-    """
-    STRETCH A MONO SOUND TRACK ARRAY
-    
-    :param snd_array_: ndarray; Data samples (1d array type float32) representing the sound samples
-    :param factor_   : float; semitones value
-    :return          : ndarray; Data samples stretch and re-phased (1d array type float32)  
-    
-    """
-    if not is_monophonic(snd_array_):
-        raise TypeError(message28)
-
-    if factor_ <= 0:
-        raise ValueError(message35)
+cdef stretch_mono(float [:] sound_array, float f, int window_size=8192, int h=256):
 
     cdef:
-        numpy.ndarray[float32_t, ndim=1] hanning_window = HANNING
-        float sound_len = <object>snd_array_.shape[0]
-        numpy.ndarray[float32_t, ndim=1] phase = zeros(8192, float32)
-        numpy.ndarray[float32_t, ndim=1] result = zeros(<int>((sound_len / factor_) + 8192), float32)
-        numpy.ndarray[complex_t, ndim=1] a2_rephased  = zeros(8192, numpy.complex)
-        int i2
+        numpy.ndarray[float32_t, ndim=1] phase  = zeros(window_size, dtype=float32)
+        numpy.ndarray[float32_t, ndim=1] hanning_window = numpy.hanning(window_size).astype(float32)
+        numpy.ndarray[complex_t, ndim=1] result = zeros( <int>(len(sound_array) / f) + window_size, complex)
+        numpy.ndarray[complex_t, ndim=1] s1 = zeros(window_size, dtype=complex)
+        numpy.ndarray[complex_t, ndim=1] s2 = zeros(window_size, dtype=complex)
+        numpy.ndarray[complex_t, ndim=1] a2_rephased = zeros(window_size, dtype=complex)
+        int i, i2
 
-    fft_   = fft.fft
-    angle_ = numpy.angle
-    ffti_  = fft.ifft
-    exp_   = numpy.exp
-    for i in numpy.arange(0, sound_len - 10240, 2048.0 * factor_):
-        i =  <int>i
-        s1 = fft_(hanning_window * snd_array_[i: i + 8192])
-        s2 = fft_(hanning_window * snd_array_[i + 2048: i + 10240])
-        phase = (phase + angle_(s2 / s1).astype(float32)) % PI2
-        a2_rephased = ffti_(numpy.abs(s2) * exp_(1j * phase))
-        i2 = <int>(i / factor_)
-        result[i2: i2 + 8192] += hanning_window * a2_rephased.real
+    for i in numpy.arange(0, len(sound_array)-(window_size+h), h*f):
 
-    result = 3.8 * result
+        # two potentially overlapping subarrays
+        a1 = sound_array[<int>i: <int>i + window_size]
+        a2 = sound_array[<int>i + h: <int>i + window_size + h]
+
+        # resynchronize the second array on the first
+        s1 =  numpy.fft.fft(hanning_window * a1)
+        s2 =  numpy.fft.fft(hanning_window * a2)
+        phase = (phase + (numpy.angle(s2/s1).astype(float32))) % (2*numpy.pi)
+        a2_rephased = numpy.fft.ifft(numpy.abs(s2)*numpy.exp(1j*phase))
+
+        # add to result
+        i2 = int(i/f)
+        result[<int>i2 : <int>i2 + window_size] += hanning_window * a2_rephased
+
+    result = result/result.max()
 
     return result.astype(float32)
 
 
-cpdef pitchshift_array_mono(numpy.ndarray[float32_t, ndim=1] snd_array_, int n_):
+cpdef pitchshift_array_mono(snd_array_, n_):
     """
     PITCH SHIFTING MONO METHOD 
     
@@ -5107,12 +5412,10 @@ cpdef pitchshift_array_mono(numpy.ndarray[float32_t, ndim=1] snd_array_, int n_)
     :return          : ndarray; Data sample with pitch shifted of n semitones
     """
 
-    if not is_monophonic(snd_array_):
-        raise TypeError(message28)
-
     cdef:
-        float f = (2 ** (<float>n_ * ONE_TWELVE))
-        numpy.ndarray[float32_t, ndim=1] stretched = stretch_mono(snd_array_, 1.0/f)
+        float f = (2 ** (<float>n_/12.0))
+
+    stretched = stretch_mono(snd_array_, 1.0/ f)
 
     # todo this might failed if the data are < 8192
     return speedx_mono(stretched[8192:], f)
@@ -5155,28 +5458,38 @@ cdef stretch_stereo(numpy.ndarray[float32_t, ndim=2] snd_array_, float factor_):
 
     if factor_ <= 0:
         raise ValueError(message35)
-
+    cdef int window_size = 8192
+    cdef int h = 512
     cdef:
         int sound_len = <object>snd_array_.shape[0]
-        numpy.ndarray[float32_t, ndim=2] result = zeros((<int>(sound_len / factor_) + 8192, 2), float32)
-        numpy.ndarray[float32_t, ndim=1] phase1 = zeros(8192, float32)
-        numpy.ndarray[float32_t, ndim=1] phase2 = zeros(8192, float32)
-        numpy.ndarray[complex_t, ndim=1] a2_rephased  = zeros(8192, numpy.complex)
-        numpy.ndarray[complex_t, ndim=1] a22_rephased  = zeros(8192, numpy.complex)
+        numpy.ndarray[complex_t, ndim=2] result = zeros((<int>(sound_len / factor_) + window_size, 2), complex)
+        numpy.ndarray[complex_t, ndim=1] s1 = zeros(window_size, dtype=complex)
+        numpy.ndarray[complex_t, ndim=1] s11 = zeros(window_size, dtype=complex)
+        numpy.ndarray[complex_t, ndim=1] s2 = zeros(window_size, dtype=complex)
+        numpy.ndarray[complex_t, ndim=1] s22 = zeros(window_size, dtype=complex)
+        numpy.ndarray[float32_t, ndim=1] phase1 = zeros(window_size, float32)
+        numpy.ndarray[float32_t, ndim=1] phase2 = zeros(window_size, float32)
+        numpy.ndarray[complex_t, ndim=1] a2_rephased  = zeros(window_size, complex)
+        numpy.ndarray[complex_t, ndim=1] a22_rephased  = zeros(window_size, complex)
+        numpy.ndarray[float32_t, ndim=1] a1_ch1 = zeros(window_size, float32)
+        numpy.ndarray[float32_t, ndim=1] a1_ch2 = zeros(window_size, float32)
         int i, i2
+
+    if sound_len == 0:
+        raise ValueError(message12)
 
     fft_   = fft.fft
     angle_ = numpy.angle
     ffti_  = fft.ifft
     exp_   = numpy.exp
-    for i in numpy.arange(0, sound_len - 10240, 2048 * factor_):
+    for i in numpy.arange(0, sound_len - (window_size+h), h * factor_):
         i      = <int>i
-        a1_ch1 = snd_array_[i: i + 8192, 0]
-        a1_ch2 = snd_array_[i: i + 8192, 1]
+        a1_ch1 = snd_array_[i: i + window_size, 0]
+        a1_ch2 = snd_array_[i: i + window_size, 1]
         s1     = fft_(HANNING * a1_ch1)
         s11    = fft_(HANNING * a1_ch2)
-        a2_ch1 = snd_array_[i + 2048: i + 10240, 0]
-        a2_ch2 = snd_array_[i + 2048: i + 10240, 1]
+        a2_ch1 = snd_array_[i + h: i + window_size + h, 0]
+        a2_ch2 = snd_array_[i + h: i + window_size + h, 1]
         s2     = fft_(HANNING * a2_ch1)
         s22    = fft_(HANNING * a2_ch2)
         phase1 = (phase1 + angle_(s2 / s1).astype(float32)) % PI2
@@ -5186,10 +5499,10 @@ cdef stretch_stereo(numpy.ndarray[float32_t, ndim=2] snd_array_, float factor_):
 
         i2 = <int>(i / factor_)
 
-        result[i2: i2 + 8192, 0] += HANNING * a2_rephased.real
-        result[i2: i2 + 8192, 1] += HANNING * a22_rephased.real
+        result[i2: i2 + window_size, 0] += HANNING * a2_rephased
+        result[i2: i2 + window_size, 1] += HANNING * a22_rephased
 
-    result = 4 * result
+    result = result/result.max()
 
     return result.astype(float32)
 
@@ -5269,6 +5582,55 @@ cpdef time_stretch(y_, rate_):
 
 
 
+# ----------------------------------------------------------------------------------------- #
+#     * COPYRIGHT 1999-2015 Stephan M. Bernsee <s.bernsee [AT] zynaptiq [DOT] com>
+#     *
+#     * 						The Wide Open License (WOL)
+#     *
+#     * Permission to use, copy, modify, distribute and sell this software and its
+#     * documentation for any purpose is hereby granted without fee, provided that
+#     * the above copyright notice and this license appear in all source copies.
+#     * THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED WARRANTY OF
+#     * ANY KIND. See http://www.dspguru.com/wol.htm for more information.
+# ------------------------------------------------------------------------------------------#
+
+cpdef PitchShiftingBernsee(float pitchShift, int numSampsToProcess, int fftFrameSize, int osamp,
+         int sampleRate, float [:] indata, float [:] outdata):
+    """
+    PITCH SHIFTING (ALGORITHM FROM Stephan M. Bernsee) 
+    
+    * COPYRIGHT 1999-2015 Stephan M. Bernsee <s.bernsee [AT] zynaptiq [DOT] com>
+    *
+    * 						The Wide Open License (WOL)
+    *
+    * Permission to use, copy, modify, distribute and sell this software and its
+    * documentation for any purpose is hereby granted without fee, provided that
+    * the above copyright notice and this license appear in all source copies.
+    * THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED WARRANTY OF
+    * ANY KIND. See http://www.dspguru.com/wol.htm for more information.
+    
+    :param pitchShift: float; Pitch shift factor (float) [0.5 (one octave down) ... 2.(one octave up).]. 
+    A value of 1 does not change the pitch
+    :param numSampsToProcess: int; tells the routine how many samples in indata[0...numSampsToProcess-1] should be
+    pitch shifted and moved to outdata[0 ... numSampsToProcess-1].The two buffers can be identical,
+    (ie. it can process the data in-place). 
+    :param fftFrameSize: int; defines the FFT frame size used for the processing. Typical values are 1024, 2048 and 4096. 
+    It may be any value <= MAX_FRAME_LENGTH but it MUST be a power of 2.
+    :param osamp: int; osamp is the STFT oversampling factor which also determines the overlap between adjacent STFT
+    frames. It should at least be 4 for moderate scaling ratios. A value of 32 is recommended for best quality.
+    :param sampleRate: int; takes the sample rate for the signal in unit Hz, ie. 44100 for 44.1 kHz audio.
+    :param indata: numpy.ndarray; Numpy ndarray data buffer shape (n, ) with datatype float 32. The data passed 
+    to the routine in indata[] should be in the range [-1.0, 1.0), which is also the output range for the data, 
+    make sure you scale the data accordingly (for 16bit signed integers you would have to divide 
+    (and multiply) by 32768).
+    :param outdata: numpy.ndarray; Numpy ndarray data buffer shape (n, ) with datatype float 32. Empty buffer to pass 
+    to the routine (The buffer will be filled inplace).
+    :return: void
+    """
+    smbPitchShift(pitchShift, numSampsToProcess, fftFrameSize, osamp, sampleRate, &indata[0], &outdata[0])
+
+
+
 #
 # cpdef phase_shift(object sound_array_):
 #
@@ -5329,6 +5691,9 @@ cpdef test_complex(sound_):
         int i
         double im, real, angle
         double complex I = 1j
+
+    if width == 0:
+        raise ValueError(message12)
 
     for i in range(0, width):
         # im =  complex_array[i].imag

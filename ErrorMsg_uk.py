@@ -2,7 +2,7 @@
 message0 = "Argument 1 is not a valid monophonic array, expecting array shape (n,) got %s "
 message1 = "Argument 1 is not a valid monophonic array, expecting numpy.ndarray type got %s "
 message2 = 'Argument 1 cannot be an empty buffer.'
-message3 = 'RMS threshold %s value cannot be > average RMS value %s.'
+message3 = 'RMS threshold %s value cannot be > %s (average RMS value).'
 message4 = "Argument 1 is not a valid stereophonic array, expecting array shape (n, 2) got %s "
 message5 = "Argument 1 is not a valid stereophonic array, expecting numpy.ndarray type got %s "
 message6 = "The mixer has not been initialized."
@@ -47,3 +47,4 @@ message44 = "Argument must be in range %s <= %s < %s, got %s"
 message45 = "Argument must be in range %s <= %s <= %s, got %s"
 message46 = "Argument must be in range %s < %s < %s, got %s"
 message47 = "Argument must be in range %s < %s <= %s, got %s"
+message48 = "Expecting type 'int16' or 'float32' got %s"
