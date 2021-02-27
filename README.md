@@ -76,7 +76,7 @@ If the compilation fail, refers to the requirement section and make sure cython
 and a C-compiler are correctly install on your system. 
 ```
 
-## Recording sound from a microphone
+### Capturing/Recording sound from a microphone
 -----------------------------------------
 ```
 Record sound(s) from the microphone to disk (default file is 'output.wav') when 
@@ -117,3 +117,17 @@ OSError: [Errno -9996] Invalid input device (no default output device)
 :return: Return a buffer type unsigned char shape (n,) 
 """
 ```
+
+### Record sound effect to disk (wav format)
+```
+cpdef record_sound(sound_, str filename_):
+    """
+    SAVE A SOUND OBJECT ON DISK (INPUT CAN BE A NUMPY ARRAY OR A SOUND OBJECT)
+    
+    * input can be a pygame.mixer.sound object or a numpy array (monophonic or stereophonic)
+    * compatible with stereophonic or monophonic sounds
+    
+    :param sound_: pygame.mixer.sound; Sound object to save onto disk 
+    :param filename_: string; filename including file extension (this method is only compatible with wav file)
+    :return: boolean; True | False if the sound has been successfully saved  
+    """
