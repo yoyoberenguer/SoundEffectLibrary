@@ -155,9 +155,13 @@ In addition you can use the reverse normalisation process to do the exact opposi
 (32bit data sample to 16bit signed data sample conversion)
 ```
 ```python
-# usage
+# usage for a monophonic audio sample 16bit format
 normalize_array_mono(data)
+
+# usage for a stereophonic audio sample 16bit format
 normalize_array_stereo(data)
+
+# usage for a sound object (monophonic or stereophonic) 
 normalize_sound(sound)
 
 ```
