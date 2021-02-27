@@ -85,7 +85,7 @@ sample. If the variable duration_ is omitted, the record duration is cap to a ma
 value of 10 seconds.
 ```
 ```python
-usage : 
+# usage : 
 record_microphone(duration_=10, record_=True)
 data = record_microphone(duration_=10, record_=False)
 
@@ -125,8 +125,8 @@ The filename must be passed otherwise a ValueError will be raised (only WAV form
 currently supported by version 1.0.1);, Return True when the file is successfully written to 
 disk otherwise return False.
 ```
-```
-usage:
+```python
+# usage:
 result_flag = record_sound(sound_object, 'output.wav')
 
 ```
@@ -144,3 +144,25 @@ cpdef record_sound(sound_, str filename_):
     :return: boolean; True | False if the sound has been successfully saved  
     """
  ```
+### Data sample normalisation & Reverse normalisation 
+```
+It it sometimes required to normalised data sample before processing. 
+This usually happen when the mixer is initialised in 16bit (signed or unsigned int mode) 
+These methods will convert monophonic and stereophonic 16bit audio sample into an 
+32bit equivalent format. The normalisation is a straight forward calculation, as a result it can be 
+used in real time processing without degrading performances of your game / application.
+In addition you can use the reverse normalisation process to do the exact opposite when required
+(32bit data sample to 16bit signed data sample conversion)
+```python
+```
+# usage
+normalize_array_mono(data)
+normalize_array_stereo(data)
+normalize_sound(sound)
+
+```
+
+
+
+
+
