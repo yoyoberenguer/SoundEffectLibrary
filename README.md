@@ -148,11 +148,11 @@ cpdef record_sound(sound_, str filename_):
 ```
 It it sometimes required to normalised data sample before processing. 
 This usually happen when the mixer is initialised in 16bit (signed or unsigned int mode) 
-These methods will convert monophonic and stereophonic 16bit audio sample into an 
+The below methods will convert monophonic and stereophonic 16bit audio sample into an 
 32bit equivalent format. The normalisation is a straight forward calculation, as a result it can be 
 used in real time processing without degrading performances of your game / application.
-In addition you can use the reverse normalisation process to do the exact opposite when required
-(32bit data sample to 16bit signed data sample conversion)
+In addition you can use the reverse normalisation process to do the opposite when required
+(32bit data sample converted into 16bit signed data sample).
 ```
 ```python
 # usage for a monophonic audio sample signed 16bit format
@@ -161,7 +161,7 @@ normalize_array_mono(data)
 # usage for a stereophonic audio sample signed 16bit format
 normalize_array_stereo(data)
 
-# usage for a sound object signed 16bit (monophonic or stereophonic) 
+# usage for a sound object signed 16bit (monophonic or stereophonic modes) 
 normalize_sound(sound)
 
 # usage for inverse normalisation monophonic audio sample 32bit format
