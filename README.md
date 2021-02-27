@@ -41,9 +41,10 @@ Below details list of methods available at your convenience
  Not included in this version (1.0.1)
  - high pass / bandpass filtering
  - Gaussian filtering
-    
+```    
 ## REQUIREMENT:
 ```
+
 pip install pygame cython numpy==1.19.3 librosa pyaudio matplotlib scipy wave pandas
 
 - setuptools>=49.2.1
@@ -65,6 +66,7 @@ pip install pygame cython numpy==1.19.3 librosa pyaudio matplotlib scipy wave pa
   refer to external documentation or tutorial in order to setup this process.
   e.g https://devblogs.microsoft.com/python/unable-to-find-vcvarsall-bat/
 ```
+
 ## BUILDING PROJECT:
 ```
 In a command prompt and under the directory containing the source files
@@ -73,10 +75,6 @@ C:\>python setup_project.py build_ext --inplace
 If the compilation fail, refers to the requirement section and make sure cython 
 and a C-compiler are correctly install on your system. 
 ```
-
-
-
-
 ## Recording sound from a microphone
 -----------------------------------------
 ```python
