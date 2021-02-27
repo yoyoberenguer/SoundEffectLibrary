@@ -87,6 +87,7 @@ limited to 10 seconds.
 ```python
 usage : 
 record_microphone(duration_=10, record_=True)
+data = record_microphone(duration_=10, record_=False)
 
 ```
 
