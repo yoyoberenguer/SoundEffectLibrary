@@ -1,5 +1,6 @@
 # SoundEffectLibrary
 
+## DESCRIPTION
 ```
 Sound Effect Library is a free software that include a large variety of tools to modify 
 and create sound effects for video games and can also be used for sound processing. 
@@ -41,18 +42,39 @@ Below details list of methods available at your convenience
  - high pass / bandpass filtering
  - Gaussian filtering
     
-
-Requirements : 
-- Pygame 
-- Numpy
-- Librosa (for time stretching and pitch shifting)
-- pyaudio (to record sound effect with microphone)
-- Matplotlib (to represent graphically signal time domain to frequency domain, harmonics)
-- scipy (for signal processing such as low pass/high pass filter and passband 
-- wave (to create wav file to disk)
-- Cython 
-
+## REQUIREMENT:
 ```
+pip install pygame cython numpy==1.19.3 librosa pyaudio matplotlib scipy wave pandas
+
+- setuptools>=49.2.1
+- pygame>=1.9.6
+- Cython>=0.28
+- numpy~=1.18.0
+- matplotlib~=2.2.2
+- scipy~=1.1.0
+- Wave~=0.0.2
+- PyAudio~=0.2.11
+- pandas~=0.22.0
+- librosa>=0.8.0 
+
+- A compiler such visual studio, MSVC, CGYWIN setup correctly
+  on your system.
+  - a C compiler for windows (Visual Studio, MinGW etc) install on your system 
+  and linked to your windows environment.
+  Note that some adjustment might be needed once a compiler is install on your system, 
+  refer to external documentation or tutorial in order to setup this process.
+  e.g https://devblogs.microsoft.com/python/unable-to-find-vcvarsall-bat/
+```
+## BUILDING PROJECT:
+```
+In a command prompt and under the directory containing the source files
+C:\>python setup_project.py build_ext --inplace
+
+If the compilation fail, refers to the requirement section and make sure cython 
+and a C-compiler are correctly install on your system. 
+```
+
+
 
 
 ## Recording sound from a microphone
