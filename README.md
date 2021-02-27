@@ -37,7 +37,7 @@ Below details list of methods available at your convenience
 - Echo sound effect
 - Pitch shifting and time stretching  
 
- Not included in this version 
+ Not included in this version (1.0.1)
  - high pass / bandpass filtering
  - Gaussian filtering
     
