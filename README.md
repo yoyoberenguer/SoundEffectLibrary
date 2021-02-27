@@ -119,6 +119,18 @@ OSError: [Errno -9996] Invalid input device (no default output device)
 ```
 
 ### Record sound effect to disk (wav format)
+```
+Record a sound object (pygame Sound object, such as pygame.sndarray.make_sound()) to 
+disk with designated name. The filename must be specify when calling the methid otherwise 
+a ValueError will be raised.This method record a WAV file to disk, no other format are 
+currently supported by version 1.0.1
+```
+```
+usage:
+result_flag = record_sound(sound_object, 'output.wav')
+
+```
+
 ```python
 cpdef record_sound(sound_, str filename_):
     """
