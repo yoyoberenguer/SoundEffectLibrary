@@ -4,10 +4,11 @@ Sound effect library
 ```
 Sound Effect Library is a free software that include a large variety of tools to modify 
 and create sound effects for video games and can also be used for sound processing. 
-It provides fast algorithms written in python and Cython in addition to C/C++ code (external libraries) 
-included with the project. 
-This project rely on Pygame mixer and sndarray modules in order to build and extract data samples into numpy.sndarray. 
-The algorithms are build for int16 and float32 array datatype and for monophonic & stereophonic sound effects
+It provides fast algorithms written in python and Cython in addition to C/C++ 
+code (external libraries) included with the project. 
+This project rely on Pygame mixer and sndarray modules in order to build and extract
+data samples into numpy.sndarray. The algorithms are build for int16 and float32 
+array datatype and for monophonic & stereophonic sound effects
 Choose the correct algorithm according to the data-type and sound model 
 
 Below details list of methods available at your convenience
