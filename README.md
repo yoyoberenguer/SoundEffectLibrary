@@ -1,5 +1,4 @@
 # SoundEffectLibrary
-Sound effect library 
 
 ```
 Sound Effect Library is a free software that include a large variety of tools to modify 
