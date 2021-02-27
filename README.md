@@ -81,8 +81,8 @@ and a C-compiler are correctly install on your system.
 ```
 Record sound(s) from the microphone to disk (default file is 'output.wav') when 
 the variable record_ is set to True, otherwise return a buffer containing the data 
-samples. If the variable duration_ is omitted, the recorded signal duration is 
-limited to 10 seconds.
+sample. If the variable duration_ is omitted, the record duration is cap to a maximum 
+value of 10 seconds.
 ```
 ```python
 usage : 
