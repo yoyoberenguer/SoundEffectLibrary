@@ -119,7 +119,7 @@ OSError: [Errno -9996] Invalid input device (no default output device)
 ```
 
 ### Record sound effect to disk (wav format)
-```
+```python
 cpdef record_sound(sound_, str filename_):
     """
     SAVE A SOUND OBJECT ON DISK (INPUT CAN BE A NUMPY ARRAY OR A SOUND OBJECT)
@@ -131,3 +131,4 @@ cpdef record_sound(sound_, str filename_):
     :param filename_: string; filename including file extension (this method is only compatible with wav file)
     :return: boolean; True | False if the sound has been successfully saved  
     """
+ ```
