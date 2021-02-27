@@ -45,7 +45,7 @@ Below details list of methods available at your convenience
 ## REQUIREMENT:
 ```
 
-pip install pygame cython numpy==1.19.3 librosa pyaudio matplotlib scipy wave pandas
+pip install pygame cython numpy librosa pyaudio matplotlib scipy wave pandas
 
 - setuptools>=49.2.1
 - pygame>=1.9.6
@@ -75,15 +75,14 @@ C:\>python setup_project.py build_ext --inplace
 If the compilation fail, refers to the requirement section and make sure cython 
 and a C-compiler are correctly install on your system. 
 ```
+
 ## Recording sound from a microphone
 -----------------------------------------
 ```python
 usage : 
 record_microphone(duration_=10, record_=True)
 
-
 ```
-
 
 ```python
 
