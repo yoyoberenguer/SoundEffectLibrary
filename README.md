@@ -154,7 +154,6 @@ used in real time processing without degrading performances of your game / appli
 In addition you can use the reverse normalisation process to do the exact opposite when required
 (32bit data sample to 16bit signed data sample conversion)
 ```python
-```
 # usage
 normalize_array_mono(data)
 normalize_array_stereo(data)
