@@ -178,7 +178,7 @@ inverse_normalize_mono_asarray(data)
 
 ```
 
-### RMS information 
+### RMS calculation
 ```
 Use the below algorithm when you need to perform the RMS calcuation for a given 
 numpy array data sample or pygame sound object.
@@ -197,6 +197,139 @@ numpy array data sample or pygame sound object.
 ```python
 ```
 
+### Tinnitus effects
+```
+```
+```python
+```
+```python
+```
+
+### Generate a silence in the data sample  
+```
+```
+```python
+```
+```python
+```
+
+### Low pass filtering effect
+```
+```
+```python
+```
+```python
+```
+
+### Harmonic (study frequency domain)
+```
+```
+```python
+```
+```python
+```
+
+### Remove silence from data sample
+```
+```
+```python
+```
+```python
+```
+
+### Create basic audio signals (noise, square, triangular, cosinus, cosinus carrier)
+```
+```
+```python
+```
+```python
+```
+
+### RMS values
+```
+```
+```python
+```
+```python
+```
 
 
+### Time shifting 
+```
+```
+```python
+```
+```python
+```
 
+### Volume control  
+```
+```
+```python
+```
+```python
+```
+
+### Reversing sound effect
+```
+```
+```python
+```
+```python
+```
+
+### Inversion sound effect 
+```
+```
+```python
+```
+```python
+```
+
+### Mixing sounds
+```
+```
+```python
+```
+```python
+```
+
+### Downsampling upsampling audio signals
+```
+```
+```python
+```
+```python
+```
+
+### Panning sound effect
+```
+```
+```python
+```
+```python
+```
+
+### Median and averaging filter (signal processing)
+```
+```
+```python
+```
+```python
+```
+
+### Create echo in the data sample
+```
+```
+```python
+```
+```python
+```
+
+### Time stretching and pitch shifting
+```
+```
+```python
+```
+```python
+```
