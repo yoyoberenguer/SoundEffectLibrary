@@ -68,8 +68,8 @@ pip install pygame cython numpy librosa pyaudio matplotlib scipy wave pandas
 ```
 
 ## BUILDING PROJECT:
-```
-In a command prompt and under the directory containing the source files
+```python
+# In a command prompt and under the directory containing the source files
 C:\>python setup_project.py build_ext --inplace
 ...
 ...
@@ -79,8 +79,8 @@ Generating code
 Finished generating code
 
 
-If the compilation fail, refers to the requirement section and make sure cython 
-and a C-compiler are correctly install on your system. 
+# If the compilation fail, refers to the requirement section and make sure cython 
+# and a C-compiler are correctly install on your system. 
 ```
 
 ### Capturing/Recording sound from a microphone
