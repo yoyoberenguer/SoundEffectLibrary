@@ -163,25 +163,25 @@ In addition you can use the reverse normalisation process to do the opposite whe
 ```
 ```python
 # usage for a monophonic audio sample signed 16bit format
-normalize_array_mono(data)
+normalize_array_mono(array)
 
 # usage for a stereophonic audio sample signed 16bit format
-normalize_array_stereo(data)
+normalize_array_stereo(array)
 
 # usage for a sound object signed 16bit (monophonic or stereophonic modes) 
 normalize_sound(sound)
 
 # usage for inverse normalisation monophonic audio sample 32bit format
-inverse_normalize_mono(data)
+inverse_normalize_mono(array)
 
 # usage for inverse normalisation stereophonic audio sample 32bit format
-inverse_normalize_stereo(data)
+inverse_normalize_stereo(array)
 
 # usage for inverse normalisation stereophonic audio sample 32bit format
-inverse_normalize_stereo_asarray(data)
+inverse_normalize_stereo_asarray(array)
 
 # usage for inverse normalisation monophonic audio sample 32bit format
-inverse_normalize_mono_asarray(data)
+inverse_normalize_mono_asarray(array)
 
 ```
 
@@ -229,8 +229,9 @@ gradually increase from silence at the beginning (fade-in).
 ```
 ```python
 # Fade in effect by passing a sound object, fade times (in seconds) and the audio sample rate
-fade_in(sound_object, fade_in_, sample_rate_)
+fade_in(sound_, fade_in_, sample_rate_)
 
+# See also 
 fade_in_mono_int16()
 fade_in_mono_float32()
 fade_in_stereo_int16()
