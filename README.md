@@ -208,13 +208,13 @@ stereophonic array such as (left channel, right channel, stereo)
 # as sound_object = mixer.Sound(os.path.join(my_directory, '', 'sound_name.ogg'))
 rms_value_mono(sound_object)
 
-# Return 3 values, left channel rms value, right and centre (all in decibels)
+# Return 3 values, left channel, right and centre (all values in decibels)
 rms_values_stereo(sound_object)
 
 # Display the rms value(s) (classic print)
 show_rms_values(sound_object)
 
-# Function returning MIN, AVG, MAX values of a sound object (scalar values, not
+# Function returning MIN, AVG and MAX values of a sound object (scalar values, not
 # rms value(s))
 display_sound_values(sound_object)
 ```
@@ -223,8 +223,33 @@ display_sound_values(sound_object)
 
 ### Fade in & Fade out effect 
 ```
+In audio engineering, a fade is a gradual increase or decrease in the level of an audio 
+signal.A recorded song may be gradually reduced to silence at its end (fade-out), or may 
+gradually increase from silence at the beginning (fade-in). 
 ```
 ```python
+# Fade in effect by passing a sound object, fade times (in seconds) and the audio sample rate
+fade_in(sound_object, fade_in_, sample_rate_)
+
+fade_in_mono_int16()
+fade_in_mono_float32()
+fade_in_stereo_int16()
+fade_in_stereo_float32()
+fade_in_mono_inplace_int16()
+fade_in_mono_inplace_float32()
+fade_in_stereo_inplace_int16()
+fade_in_stereo_inplace_float32()
+
+fade_out()
+fade_out_mono_int16()
+fade_out_mono_float32()
+fade_out_stereo_int16()
+fade_out_stereo_float32()
+fade_out_mono_inplace_int16()
+fade_out_mono_inplace_float32()
+fade_out_stereo_inplace_float32()
+fade_out_stereo_inplace_int16()
+
 ```
 ```python
 ```
