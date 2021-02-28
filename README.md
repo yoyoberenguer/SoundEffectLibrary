@@ -153,8 +153,8 @@ cpdef record_sound(sound_, str filename_):
  ```
 ### Data sample normalisation & Reverse normalisation 
 ```
-It it sometimes required to normalised data sample before processing. 
-This usually happen when the mixer is initialised in 16bit (signed or unsigned int mode) 
+It it sometimes required to normalised data sample before processing when the mixer is 
+initialised in 16bit (signed or unsigned int mode).
 The below methods will convert monophonic and stereophonic 16bit audio sample into an 
 32bit equivalent format. The normalisation is a straight forward calculation, as a result it can be 
 used in real time processing without degrading performances of your game / application.
@@ -189,6 +189,21 @@ inverse_normalize_mono_asarray(data)
 ```
 Use the below algorithm when you need to perform the RMS calcuation for a given 
 numpy array data sample or pygame sound object.
+An analysis used for the overall amplitude of a signal is called the root-mean-square (RMS)
+amplitude or level. Conceptually, it describes the average signal amplitude. However, it is
+different than simply measuring the arithmetic mean of a signal.An audio signal can have 
+both positive and negative amplitude values. If we took the arithmetic mean of a sine wave,
+the negative values would offset the positive values and the result would be zero. This 
+approach is not informative about the average signal level.
+This is where the RMS level can be useful. It is based on the magnitude of a signal as a 
+measure of signal strength, regardless of whether the amplitude is positive or negative.
+The magnitude is calculated by squaring each sample value (so they are all positive), then 
+the signal average is calculated, eventually followed by the square root operation. More 
+completely, the RMS level is, “the square root of the arithmetic mean of the signal squared.”
+https://www.hackaudio.com/digital-signal-processing/amplitude/rms-amplitude/
+
+Return the value(s) in decibels (single value for a monophonic array and 3 values for
+stereophonic array such as (left channel, right channel, stereo)
 ```
 ```python
 # usage
