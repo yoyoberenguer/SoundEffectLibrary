@@ -187,8 +187,6 @@ inverse_normalize_mono_asarray(data)
 
 ### RMS calculation
 ```
-Use the below algorithm when you need to perform the RMS calcuation for a given 
-numpy array data sample or pygame sound object.
 An analysis used for the overall amplitude of a signal is called the root-mean-square (RMS)
 amplitude or level. Conceptually, it describes the average signal amplitude. However, it is
 different than simply measuring the arithmetic mean of a signal.An audio signal can have 
@@ -206,7 +204,19 @@ Return the value(s) in decibels (single value for a monophonic array and 3 value
 stereophonic array such as (left channel, right channel, stereo)
 ```
 ```python
-# usage
+# Return the RMS value (in decibels), sound_object is a pygame Sound object such 
+# as sound_object = mixer.Sound(os.path.join(my_directory, '', 'sound_name.ogg'))
+rms_value_mono(sound_object)
+
+# Return 3 values, left channel rms value, right and centre (all in decibels)
+rms_values_stereo(sound_object)
+
+# Display the rms value(s) (classic print)
+show_rms_values(sound_object)
+
+# Function returning MIN, AVG, MAX values of a sound object (scalar values, not
+# rms value(s))
+display_sound_values(sound_object)
 ```
 ```python
 ```
