@@ -322,7 +322,7 @@ is 50 Hz, a common AC power supply frequency, the frequencies of the first three
 is periodic at 50 Hz.
 
 Harmonics method will return 2 objects the first one is a pygame surface showing the frequency analysis (signal 
-amplitude versus frequency). Note that the signal amplitude is not in decibels. 
+amplitude versus frequency), note that the signal amplitude is not in decibels. 
 The second object is the data containing all the frequency values (numpy.ndarray shape (n, ) float32). 
 You can specify the size of the pygame surface (24bit) with the variable width and heigh (default is 255x255 
 pixels). The sample data must be a numpy.ndarray shape (n, ) or (n, 2) int16 or float32. The spectrum analysis 
