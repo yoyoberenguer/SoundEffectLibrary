@@ -378,14 +378,45 @@ These functions can be useful for generating basic sound for a specific frequenc
 a variety of signals together for testig purpose, signal processing or electronics project etc.
 The noise signal is a random generated data samples, this function as no other purpose than generating 
 a random noise to a loudspeakers.
-The waveform carrier is a tool that can build a sound effect with a list of specific frequencies 
-passed as argument to the function, each sub frequency singnal will have their amplitude a fraction lower 
-than the carrier signal.
+The waveform carrier is a tool that can build a sound effect with a serie of specific frequencies 
+passed as argument to the function (all frequencies will be mixed together). Each sub frequency 
+singnal will have their amplitude decreased compare to first frequency (carrier signal).
 
 ```
 ```python
-```
-```python
+noise_signal(
+        float amplitude_ = 1.0,
+        float duration_  = 0.5,
+        int sample_rate_ = 44100,
+        )
+
+square_signal(float amplitude_ = 1.0,
+                    float duration_  = 1.0,
+                    float frequency_ = 100,
+                    int sample_rate_ = 48000,
+                    float c_         = 0.0,
+                    float phi_       = 0.0
+                    )
+triangular_signal(float amplitude_ = 1.0,
+                        float duration_  = 0.5,
+                        float frequency_ = 100,
+                        int sample_rate_ = 44100,
+                        float ramp_ = 0.5
+                        )
+cos_signal(float amplitude_ = 1.0,
+                 float duration_  = 1.0,
+                 float frequency_ = 100,
+                 int sample_rate_ = 48000,
+                 float c_         = 0.0,
+                 double phi_      = 0.0
+                 )
+cos_carrier(float amplitude_ = 1.0,
+                  float duration_  = 1.0,
+                  list frequencies_ = [],
+                  int sample_rate_ = 44100,
+                  float c_         = 0.0,
+                  double phi_      = 0.0
+                  )
 ```
 
 
