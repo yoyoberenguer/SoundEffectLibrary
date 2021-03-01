@@ -244,7 +244,7 @@ fade_in_stereo_inplace_float32()
 # Fade out sound object (sound_) given a starting time (fade_out_ in seconds) and the sample rate 
 fade_out(sound_, fade_out_, sample_rate_)
 
-# see also desgnated Fade out methods below for specific usage 
+# See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
 fade_out_mono_int16()
 fade_out_mono_float32()
 fade_out_stereo_int16()
@@ -265,19 +265,28 @@ This effect can be use in your video game after a loud explosion
 You can choose a specific frequency, duration and amplitude for the effect. 
 tinnitus_fade_out method include a fade-out effect for a smooth transition to the 
 next sound effect.
+The sound object can be monophonic or stereophonic (datatype int16 or float32)
 ```
 ```python
 sound = tinnitus_fade_out(0.5, duration_=5.0, frequency_=5000)
 ```
-```python
-```
 
 ### Generate a silence in the data sample  
 ```
+Create a silence in your data samples (signal length remain unchanged).
+This function cancel any sound effect in between a specific interval of your data 
+sample.
 ```
 ```python
+# create a silence (serie of zeros data) in the interval start_ & end_ (time in seconds) 
+sound = generate_silence(sound_, start_, end_, sample_rate_)
 ```
 ```python
+# See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
+generate_silence_array_mono_int16
+generate_silence_array_mono_float32
+generate_silence_array_stereo_int16
+generate_silence_array_stereo_float32
 ```
 
 ### Low pass filtering effect (signal processing)
