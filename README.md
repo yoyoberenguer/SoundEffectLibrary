@@ -303,6 +303,7 @@ sound = low_pass(sound_, float fc_):
 ```
 ```python
 # See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
+# Below low pass filter will be applied inplace 
 low_pass_mono_inplace_int16(sound_array_, fc_)
 low_pass_mono_inplace_float32(sound_array_, fc_):
 low_pass_stereo_inplace_int16(sound_array_, fc_):
@@ -312,11 +313,26 @@ low_pass_stereo_inplace_float32(sound_array_, fc_):
 
 ### Harmonic (display signal frequency domain)
 ```
+A harmonic of such a wave is a wave with a frequency that is a positive integer multiple of the frequency
+of the original wave, known as the fundamental frequency. The original wave is also called the 1st harmonic,
+the following harmonics are known as higher harmonics. As all harmonics are periodic at the fundamental 
+frequency, the sum of harmonics is also periodic at that frequency. For example, if the fundamental frequency
+is 50 Hz, a common AC power supply frequency, the frequencies of the first three higher harmonics are 100 Hz 
+(2nd harmonic), 150 Hz (3rd harmonic), 200 Hz (4th harmonic) and any addition of waves with these frequencies 
+is periodic at 50 Hz.
+
+Harmonic will return 2 objects the first one is a pygame surface showing the frequency analysis (signal amplitude
+versus frequency). The second object is the data containing all the frequency values (numpy.ndarray shape (n, )
+float32). You can specify the size of the pygame surface (24bit) with the variable width and heigh (default is
+255x255 pixels). The sample data must be a numpy.ndarray shape (n, ) or (n, 2) int16 or float32. 
+The spectrum analysis will be applied only to the first channel of a stereophonic sound, the second channel 
+will be disregarded. 
 ```
 ```python
+# Return a pygame surface size 255x255 pixels and array containing all frequencies
+surface_, array_ = harmonics(samples_, sampling_rate_=44100, width=255, height=255)
 ```
-```python
-```
+
 
 ### Remove silence from data sample
 ```
