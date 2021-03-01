@@ -11,7 +11,7 @@ data samples into numpy.sndarray. The algorithms are build for int16 and float32
 array datatype and for monophonic & stereophonic sound effects
 Choose the correct algorithm according to the data-type and sound model 
 
-Below details list of methods available at your convenience
+List of methods available for version 1.0.1
 - Microphone recording 
 - Sound recording (wav format)
 - Data sample normalisation &reverse normalisation process 
@@ -362,6 +362,7 @@ new_sound = remove_silence_stereo_int16(array_, -35.1)
  
 ```
 ```python
+# See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
 remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False)
 remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False)
 remove_silence_mono_int16(short [::1] samples_, rms_threshold_=None, bint bypass_avg_ = False)
@@ -370,14 +371,17 @@ remove_silence_mono_float32(float [::1] samples_, rms_threshold_=None, bint bypa
 
 ### Create basic audio signals (noise, square, triangular, cosinus, waveform carrier)
 ```
-```
-```python
-```
-```python
-```
+Create/design periodic signals such as square, cosinus or triangular using a set of variables to 
+define the signal properties (frequency, amplitude, duration, phase etc). 
+Finally, a sound object is build from the data samples and can be play by the mixer.
+These functions can be useful for generating basic sound for a specific frequency or for mixing
+a variety of signals together for testig purpose, signal processing or electronics project etc.
+The noise signal is a random generated data samples, this function as no other purpose than generating 
+a random noise to a loudspeakers.
+The waveform carrier is a tool that can build a sound effect with a list of specific frequencies 
+passed as argument to the function, each sub frequency singnal will have their amplitude a fraction lower 
+than the carrier signal.
 
-### RMS values
-```
 ```
 ```python
 ```
