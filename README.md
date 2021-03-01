@@ -231,7 +231,7 @@ gradually increase from silence at the beginning (fade-in).
 # Fade in effect by passing a sound object, fade times (in seconds) and the audio sample rate
 fade_in(sound_, fade_in_, sample_rate_)
 
-# See also 
+# See also designated methods for monophonic or stereophonic data samples (int16 or float32 bit format)
 fade_in_mono_int16()
 fade_in_mono_float32()
 fade_in_stereo_int16()
@@ -241,7 +241,10 @@ fade_in_mono_inplace_float32()
 fade_in_stereo_inplace_int16()
 fade_in_stereo_inplace_float32()
 
-fade_out()
+# Fade out sound object (sound_) given a starting time (fade_out_ in seconds) and the sample rate 
+fade_out(sound_, fade_out_, sample_rate_):)
+
+# see also desgnated Fade out methods below for specific usage 
 fade_out_mono_int16()
 fade_out_mono_float32()
 fade_out_stereo_int16()
@@ -257,8 +260,13 @@ fade_out_stereo_inplace_int16()
 
 ### Tinnitus effects
 ```
+Create the tinnitus effect (unpleasant ringing or buzzing in the ears)
+This effect can be use in your video game after a loud explosion 
+You can choose a specific frequency, duration and amplitude of the effect. 
+tinnitus_fade_out method include a fade-out effect to simulate the end of the effect. 
 ```
 ```python
+sound = tinnitus_fade_out(0.5, duration_=5.0, frequency_=5000)
 ```
 ```python
 ```
