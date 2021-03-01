@@ -321,16 +321,19 @@ is 50 Hz, a common AC power supply frequency, the frequencies of the first three
 (2nd harmonic), 150 Hz (3rd harmonic), 200 Hz (4th harmonic) and any addition of waves with these frequencies 
 is periodic at 50 Hz.
 
-Harmonic will return 2 objects the first one is a pygame surface showing the frequency analysis (signal amplitude
-versus frequency). The second object is the data containing all the frequency values (numpy.ndarray shape (n, )
-float32). You can specify the size of the pygame surface (24bit) with the variable width and heigh (default is
-255x255 pixels). The sample data must be a numpy.ndarray shape (n, ) or (n, 2) int16 or float32. 
-The spectrum analysis will be applied only to the first channel of a stereophonic sound, the second channel 
-will be disregarded. 
+Harmonics method will return 2 objects the first one is a pygame surface showing the frequency analysis (signal 
+amplitude versus frequency). Note that the signal amplitude is not in decibels. 
+The second object is the data containing all the frequency values (numpy.ndarray shape (n, ) float32). 
+You can specify the size of the pygame surface (24bit) with the variable width and heigh (default is 255x255 
+pixels). The sample data must be a numpy.ndarray shape (n, ) or (n, 2) int16 or float32. The spectrum analysis 
+will be applied to the first channel of a stereophonic sound. 
 ```
 ```python
 # Return a pygame surface size 255x255 pixels and array containing all frequencies
+# To display the surface, blit it to the video mode using the pygame method blit 
+# You can also save the surface to disk using the command pygame.image.save(surface_, "myplot.png")
 surface_, array_ = harmonics(samples_, sampling_rate_=44100, width=255, height=255)
+
 ```
 
 
