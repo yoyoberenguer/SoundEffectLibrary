@@ -291,10 +291,23 @@ generate_silence_array_stereo_float32
 
 ### Low pass filtering effect (signal processing)
 ```
+Low-pass filters pass through frequencies below their cutoff frequencies, and progressively
+attenuates frequencies above the cutoff frequency. Low-pass filters are used in audio 
+crossovers to remove high-frequency content from signals being sent to a low-frequency subwoofer
+system.
 ```
 ```python
+# apply a low pass filter to the sound effect (sound_) with the cut frequency defined by the 
+# variable fc_
+sound = low_pass(sound_, float fc_):
 ```
 ```python
+# See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
+low_pass_mono_inplace_int16(sound_array_, fc_)
+low_pass_mono_inplace_float32(sound_array_, fc_):
+low_pass_stereo_inplace_int16(sound_array_, fc_):
+low_pass_stereo_inplace_float32(sound_array_, fc_):
+
 ```
 
 ### Harmonic (display signal frequency domain)
