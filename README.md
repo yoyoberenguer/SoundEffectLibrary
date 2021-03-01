@@ -305,9 +305,9 @@ sound = low_pass(sound_, float fc_):
 # See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
 # Below low pass filter will be applied inplace 
 low_pass_mono_inplace_int16(sound_array_, fc_)
-low_pass_mono_inplace_float32(sound_array_, fc_):
-low_pass_stereo_inplace_int16(sound_array_, fc_):
-low_pass_stereo_inplace_float32(sound_array_, fc_):
+low_pass_mono_inplace_float32(sound_array_, fc_)
+low_pass_stereo_inplace_int16(sound_array_, fc_)
+low_pass_stereo_inplace_float32(sound_array_, fc_)
 
 ```
 
@@ -324,7 +324,7 @@ is periodic at 50 Hz.
 Harmonics method will return 2 objects the first one is a pygame surface showing the frequency analysis (signal 
 amplitude versus frequency), note that the signal amplitude is not in decibels. 
 The second object is the data containing all the frequency values (numpy.ndarray shape (n, ) float32). 
-You can specify the size of the pygame surface (24bit) with the variable width and heigh (default is 255x255 
+You can specify the size of the pygame surface (24bit) with the variable width and height (default is 255x255 
 pixels). The sample data must be a numpy.ndarray shape (n, ) or (n, 2) int16 or float32. The spectrum analysis 
 will be applied to the first channel of a stereophonic sound. 
 ```
@@ -339,10 +339,33 @@ surface_, array_ = harmonics(samples_, sampling_rate_=44100, width=255, height=2
 
 ### Remove silence from data sample
 ```
+Trim leading and trailing silence from an audio signal 
+This method detect in the audio singal values that are below a specific rms threshold (rms_threshold_) 
+and disregard these values when building the output audio signal. The comparison is applied only at
+the start and at the end of the record to avoid deleting short silence in an audio signal. 
+A new array is build to match the original audio signal minus the deleted records and a new sound object
+is return by the function.
 ```
 ```python
+# Init the pygame mixer is stereo and signed int16 values
+SAMPLE_RATE = 44100
+pygame.mixer.init(SAMPLE_RATE, -16, 2, 2048, allowedchanges=0)
+# load a sound effect into a numpy.array shape(n, 2) stereophonic sound
+array_ = pygame.sndarray.samples(sound)
+# sound length calculation 
+sound_length = array_.shape[0] / SAMPLE_RATE
+# Determine the average RMS value for the entire array 
+rms = rms_values_stereo(array_)[2]
+# remove silence from the data samples (values below -35.1 decibels will be ignored during the 
+# contruction of the new sound object)
+new_sound = remove_silence_stereo_int16(array_, -35.1)        
+ 
 ```
 ```python
+remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False)
+remove_silence_stereo_float32(float [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False)
+remove_silence_mono_int16(short [::1] samples_, rms_threshold_=None, bint bypass_avg_ = False)
+remove_silence_mono_float32(float [::1] samples_, rms_threshold_=None, bint bypass_avg_ = False)
 ```
 
 ### Create basic audio signals (noise, square, triangular, cosinus, waveform carrier)
