@@ -422,16 +422,27 @@ cos_carrier(float amplitude_ = 1.0,
 
 ### Time shifting 
 ```
+Time shifting allow a signal to be shifted to the right specific time window (signal length)
+Shift the data samples 
+
 ```
 ```python
+time_shift_mono_int16(short [:] samples_, float shift_, int sample_rate_)
+time_shift_mono_float32(float [:] samples_, float shift_, int sample_rate_)
+time_shift_stereo_int16(short [:, :] samples_, float shift_, int sample_rate_)
+time_shift_stereo_float32(float [:, :] samples_, float shift_, int sample_rate_)
+time_shift_channel(short [:, :] samples_, float shift_, int sample_rate_, unsigned short int channel_=0)
 ```
 ```python
 ```
 
 ### Volume control  
 ```
+
 ```
 ```python
+set_volume(sound_, float volume_=1.0) except *:
+
 ```
 ```python
 ```
@@ -440,6 +451,12 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+reverse_sound_beta(sound_):
+reverse_stereo_int16(short [:, :] samples_):
+reverse_stereo_float32(float [:, :] samples_):
+reverse_mono_int16(short [:] samples_):
+reverse_mono_float32(float [:] samples_):
+reverse_sound(sound_):
 ```
 ```python
 ```
@@ -448,6 +465,10 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+invert_array_mono_int16(short [:] samples_):
+invert_array_mono_float32(float [:] samples_):
+invert_array_stereo_int16(short [:, :] samples_):
+invert_array_stereo_float32(float [:, :] samples_):
 ```
 ```python
 ```
@@ -456,6 +477,9 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+add_mono(sound_array0, sound_array1):
+adding_stereo_int16(short [:, :] sound0, short[:, :] sound1):
+add_stereo(sound0, sound1):
 ```
 ```python
 ```
@@ -464,6 +488,9 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+down_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
+up_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
+slow_down_array_stereo(short [:, :] samples_, int n_):
 ```
 ```python
 ```
@@ -472,6 +499,11 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+panning_channels(short [::1] channel0_,
+                       short [::1] channel1_,
+                       short [:, :] samples_,
+                       float angle_ = 0.0):
+panning_sound(sound_, float angle_ = 0.0):
 ```
 ```python
 ```
@@ -480,6 +512,8 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+median_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
+average_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
 ```
 ```python
 ```
@@ -488,6 +522,11 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+echo_f32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.0):
+echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
+create_echo_from_channels(short [:] channel0_, short [:] channel1_,
+                                short echoes_, int delay_=10, int sample_rate_=44100):
+create_rev_echo_from_sound(sound_, short echoes_, int delay_=10000, int sample_rate_=44100):
 ```
 ```python
 ```
@@ -496,6 +535,10 @@ cos_carrier(float amplitude_ = 1.0,
 ```
 ```
 ```python
+pitchshift(sound_, int n_):
+shift_pitch(y_, float sr_, int steps_):
+PitchShiftingBernsee(float pitchShift, int numSampsToProcess, int fftFrameSize, int osamp,
+         int sampleRate, float [:] indata, float [:] outdata):
 ```
 ```python
 ```
