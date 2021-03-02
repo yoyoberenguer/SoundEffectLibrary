@@ -438,10 +438,12 @@ time_shift_channel(short [:, :] samples_, float shift_, int sample_rate_, unsign
 
 ### Volume control  
 ```
-
+This will set the playback volume (loudness) for this Sound. 
+This will immediately affect the Sound if it is playing. It will also affect any future playback of this Sound.
+Volume change is applied inplace
 ```
 ```python
-set_volume(sound_, float volume_=1.0) except *:
+set_volume(sound_, float volume_=1.0)
 
 ```
 ```python
