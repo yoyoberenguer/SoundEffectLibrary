@@ -384,39 +384,19 @@ singnal will have their amplitude decreased compare to first frequency (carrier 
 
 ```
 ```python
-noise_signal(
-        float amplitude_ = 1.0,
-        float duration_  = 0.5,
-        int sample_rate_ = 44100,
-        )
+noise_signal(amplitude_ = 1.0, duration_  = 0.5, sample_rate_ = 44100)
 
-square_signal(float amplitude_ = 1.0,
-                    float duration_  = 1.0,
-                    float frequency_ = 100,
-                    int sample_rate_ = 48000,
-                    float c_         = 0.0,
-                    float phi_       = 0.0
-                    )
-triangular_signal(float amplitude_ = 1.0,
-                        float duration_  = 0.5,
-                        float frequency_ = 100,
-                        int sample_rate_ = 44100,
-                        float ramp_ = 0.5
-                        )
-cos_signal(float amplitude_ = 1.0,
-                 float duration_  = 1.0,
-                 float frequency_ = 100,
-                 int sample_rate_ = 48000,
-                 float c_         = 0.0,
-                 double phi_      = 0.0
-                 )
-cos_carrier(float amplitude_ = 1.0,
-                  float duration_  = 1.0,
-                  list frequencies_ = [],
-                  int sample_rate_ = 44100,
-                  float c_         = 0.0,
-                  double phi_      = 0.0
-                  )
+square_signal(amplitude_ = 1.0, duration_  = 1.0, frequency_ = 100, sample_rate_ = 48000,
+                    c_ = 0.0, phi_  = 0.0)
+                    
+triangular_signal(amplitude_ = 1.0, duration_  = 0.5, frequency_ = 100, sample_rate_ = 44100,
+                        ramp_ = 0.5)
+                        
+cos_signal(amplitude_ = 1.0, duration_ = 1.0, frequency_ = 100, sample_rate_ = 48000,
+           c_ = 0.0, phi_ = 0.0)
+           
+cos_carrier(amplitude_ = 1.0, duration_  = 1.0, frequencies_ = [], sample_rate_ = 44100,
+                  c_ = 0.0,  phi_ = 0.0)
 ```
 
 
@@ -523,6 +503,10 @@ panning_sound(sound_, angle_ = 0.0)
 
 ### Median and averaging filter (signal processing)
 ```
+The median filter provides a means for dealing with "spiky" noise and separating peaks 
+from a slowly changing baseline, even when the exact nature of the drift and noise distribution
+is not known. Median filtering is a useful and complementary addition to existing digital 
+filtering techniques
 ```
 ```python
 median_filter_stereo(samples_, dim = 3)
