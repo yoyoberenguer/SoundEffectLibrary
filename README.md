@@ -471,10 +471,10 @@ are made positive. Invert does not usually affect the sound of the audio at all,
 for audio cancellation. 
 ```
 ```python
-invert_array_mono_int16(samples_):
-invert_array_mono_float32(samples_):
-invert_array_stereo_int16(samples_):
-invert_array_stereo_float32(samples_):
+invert_array_mono_int16(samples_)
+invert_array_mono_float32(samples_)
+invert_array_stereo_int16(samples_)
+invert_array_stereo_float32(samples_)
 ```
 ```python
 ```
@@ -485,9 +485,9 @@ Adding / mixing sounds together to create a more complex sound effect.
 You can design you own sound effect by mixing two sound arrays (same length) together 
 to create a third sound and save it onto disk.
 ```python
-add_mono(sound_array0, sound_array1):
-adding_stereo_int16(sound0, sound1):
-add_stereo(sound0, sound1):
+add_mono(sound_array0, sound_array1)
+adding_stereo_int16(sound0, sound1)
+add_stereo(sound0, sound1)
 ```
 ```python
 ```
@@ -496,22 +496,27 @@ add_stereo(sound0, sound1):
 ```
 ```
 ```python
-down_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
-up_sampling_array_stereo(short [:, :] samples_, unsigned short n_=2):
-slow_down_array_stereo(short [:, :] samples_, int n_):
+down_sampling_array_stereo(samples_, n_=2)
+up_sampling_array_stereo(samples_, n_=2)
+slow_down_array_stereo(samples_, n_)
 ```
 ```python
 ```
 
 ### Panning sound effect
 ```
+<<WIKIPEDIA>>
+Panning is the distribution of a sound signal (either monaural or stereophonic pairs) 
+into a new stereo or multi-channel sound field determined by a pan control setting.
+A typical physical recording console has a pan control for each incoming source channel. 
+A pan control or pan pot (short for "panning potentiometer") is an analog control with 
+a position indicator which can range continuously from the 7 o'clock when fully left 
+to the 5 o'clock position fully right. Audio mixing software replaces pan pots with 
+on-screen virtual knobs or sliders which function like their physical counterparts.
 ```
 ```python
-panning_channels(short [::1] channel0_,
-                       short [::1] channel1_,
-                       short [:, :] samples_,
-                       float angle_ = 0.0):
-panning_sound(sound_, float angle_ = 0.0):
+panning_channels(channel0_, channel1_, samples_, angle_ = 0.0)
+panning_sound(sound_, angle_ = 0.0)
 ```
 ```python
 ```
@@ -520,8 +525,8 @@ panning_sound(sound_, float angle_ = 0.0):
 ```
 ```
 ```python
-median_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
-average_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
+median_filter_stereo(samples_, dim = 3)
+average_filter_stereo(samples_, dim = 3)
 ```
 ```python
 ```
@@ -530,11 +535,10 @@ average_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
 ```
 ```
 ```python
-echo_f32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.0):
-echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
-create_echo_from_channels(short [:] channel0_, short [:] channel1_,
-                                short echoes_, int delay_=10, int sample_rate_=44100):
-create_rev_echo_from_sound(sound_, short echoes_, int delay_=10000, int sample_rate_=44100):
+echo_f32(sound_, echoes_, sample_rate_, delay_=1.0)
+echo(sound_, echoes_, sample_rate_, delay_=1)
+create_echo_from_channels(channel0_, channel1_, echoes_, delay_=10, sample_rate_=44100)
+create_rev_echo_from_sound(sound_, echoes_, delay_=10000, sample_rate_=44100)
 ```
 ```python
 ```
@@ -543,10 +547,9 @@ create_rev_echo_from_sound(sound_, short echoes_, int delay_=10000, int sample_r
 ```
 ```
 ```python
-pitchshift(sound_, int n_):
-shift_pitch(y_, float sr_, int steps_):
-PitchShiftingBernsee(float pitchShift, int numSampsToProcess, int fftFrameSize, int osamp,
-         int sampleRate, float [:] indata, float [:] outdata):
+pitchshift(sound_, n_)
+shift_pitch(y_, sr_, steps_)
+PitchShiftingBernsee(pitchShift, numSampsToProcess, fftFrameSize, osamp, sampleRate, indata, outdata)
 ```
 ```python
 ```
