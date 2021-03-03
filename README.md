@@ -533,6 +533,12 @@ average_filter_stereo(samples_, dim = 3)
 
 ### Create echo in the data sample
 ```
+<<WIKIPEDIA>>
+In audio signal processing and acoustics, echo is a reflection of sound that arrives at the
+listener with a delay after the direct sound. The delay is directly proportional to the distance 
+of the reflecting surface from the source and the listener. Typical examples are the echo produced 
+by the bottom of a well, by a building, or by the walls of an enclosed room and an empty room.
+A true echo is a single reflection of the sound source.
 ```
 ```python
 echo_f32(sound_, echoes_, sample_rate_, delay_=1.0)
@@ -540,11 +546,13 @@ echo(sound_, echoes_, sample_rate_, delay_=1)
 create_echo_from_channels(channel0_, channel1_, echoes_, delay_=10, sample_rate_=44100)
 create_rev_echo_from_sound(sound_, echoes_, delay_=10000, sample_rate_=44100)
 ```
-```python
-```
+
 
 ### Time stretching and pitch shifting
 ```
+Pitch shifting is a sound recording technique in which the original pitch of a sound is raised or 
+lowered. Effects units that raise or lower pitch by a pre-designated musical interval are called
+pitch shifters.
 ```
 ```python
 pitchshift(sound_, n_)
