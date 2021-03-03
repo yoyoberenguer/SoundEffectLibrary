@@ -422,65 +422,71 @@ cos_carrier(float amplitude_ = 1.0,
 
 ### Time shifting 
 ```
-Time shifting allow a signal to be shifted to the right specific time window (signal length)
-Shift the data samples 
+Time shifting allow a signal to be shifted in a specific time window (defined by the signal length)
+The total amount of time shifting cannot exceed the signal length. Values shifted outside 
+the window are deleted and will not be included in the final sound object
+```
+```python
+# See dedicated methods for monophonic & stereophonic data samples (int16 & float32)
+time_shift_mono_int16(samples_, shift_, sample_rate_)
+time_shift_mono_float32(samples_, shift_, sample_rate_)
+time_shift_stereo_int16(samples_, shift_, sample_rate_)
+time_shift_stereo_float32(samples_, shift_, sample_rate_)
+time_shift_channel(samples_, shift_, sample_rate_, int channel_=0)
+```
 
-```
-```python
-time_shift_mono_int16(short [:] samples_, float shift_, int sample_rate_)
-time_shift_mono_float32(float [:] samples_, float shift_, int sample_rate_)
-time_shift_stereo_int16(short [:, :] samples_, float shift_, int sample_rate_)
-time_shift_stereo_float32(float [:, :] samples_, float shift_, int sample_rate_)
-time_shift_channel(short [:, :] samples_, float shift_, int sample_rate_, unsigned short int channel_=0)
-```
-```python
-```
 
 ### Volume control  
 ```
 This will set the playback volume (loudness) for this Sound. 
 This will immediately affect the Sound if it is playing. It will also affect any future playback of this Sound.
-Volume change is applied inplace
+Volume change is applied inplace. Maximum volume is 1.0 
 ```
 ```python
 set_volume(sound_, float volume_=1.0)
 
 ```
-```python
-```
 
 ### Reversing sound effect (playing backward)
 ```
+Reverse the selected audio, so that the end of the audio will be heard first and the beginning last.
+
 ```
 ```python
-reverse_sound_beta(sound_):
-reverse_stereo_int16(short [:, :] samples_):
-reverse_stereo_float32(float [:, :] samples_):
-reverse_mono_int16(short [:] samples_):
-reverse_mono_float32(float [:] samples_):
-reverse_sound(sound_):
+reverse_sound(sound_)
 ```
 ```python
+reverse_sound_beta(sound_)
+reverse_stereo_int16(samples_)
+reverse_stereo_float32(samples_)
+reverse_mono_int16(samples_)
+reverse_mono_float32(samples_)
 ```
 
 ### Inversion sound effect 
 ```
+Invert flips an audio samples upside-down, reversing their polarity. 
+The positive samples are moved below the zero line (so becoming negative), and negative samples 
+are made positive. Invert does not usually affect the sound of the audio at all, but it can be used 
+for audio cancellation. 
 ```
 ```python
-invert_array_mono_int16(short [:] samples_):
-invert_array_mono_float32(float [:] samples_):
-invert_array_stereo_int16(short [:, :] samples_):
-invert_array_stereo_float32(float [:, :] samples_):
+invert_array_mono_int16(samples_):
+invert_array_mono_float32(samples_):
+invert_array_stereo_int16(samples_):
+invert_array_stereo_float32(samples_):
 ```
 ```python
 ```
 
 ### Mixing sounds together 
 ```
-```
+Adding / mixing sounds together to create a more complex sound effect. 
+You can design you own sound effect by mixing two sound arrays (same length) together 
+to create a third sound and save it onto disk.
 ```python
 add_mono(sound_array0, sound_array1):
-adding_stereo_int16(short [:, :] sound0, short[:, :] sound1):
+adding_stereo_int16(sound0, sound1):
 add_stereo(sound0, sound1):
 ```
 ```python
