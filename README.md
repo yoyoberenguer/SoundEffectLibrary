@@ -555,8 +555,32 @@ lowered. Effects units that raise or lower pitch by a pre-designated musical int
 pitch shifters.
 ```
 ```python
+# Please visit : 
+# http://zulko.github.io/blog/2014/03/29/soundstretching-and-pitch-shifting-in-python/    #
+#   Original concept and coding from zulko (monophonic version)                           #
 pitchshift(sound_, n_)
+
+
+# ----------------------------------------------------------------------------------------- #
+#   Please visit the following pages for more information concerning methods defined below  #
+#   https://github.com/librosa/librosa                                                      #
+#   https://librosa.org/doc/latest/index.html                                               #
+#   LIBROSA                                                                                 #
+# ------------------------------------------------------------------------------------------#
 shift_pitch(y_, sr_, steps_)
+
+# ----------------------------------------------------------------------------------------- #
+#     * COPYRIGHT 1999-2015 Stephan M. Bernsee <s.bernsee [AT] zynaptiq [DOT] com>
+#     *
+#     * 						The Wide Open License (WOL)
+#     *
+#     * Permission to use, copy, modify, distribute and sell this software and its
+#     * documentation for any purpose is hereby granted without fee, provided that
+#     * the above copyright notice and this license appear in all source copies.
+#     * THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED WARRANTY OF
+#     * ANY KIND. See http://www.dspguru.com/wol.htm for more information.
+# ------------------------------------------------------------------------------------------#
+
 PitchShiftingBernsee(pitchShift, numSampsToProcess, fftFrameSize, osamp, sampleRate, indata, outdata)
 ```
 ```python
