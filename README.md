@@ -464,13 +464,13 @@ invert_array_stereo_float32(samples_)
 Adding / mixing sounds together to create a more complex sound effect. 
 You can design you own sound effect by mixing two sound arrays (same length) together 
 to create a third sound and save it onto disk.
+```
 ```python
 add_mono(sound_array0, sound_array1)
 adding_stereo_int16(sound0, sound1)
 add_stereo(sound0, sound1)
 ```
-```python
-```
+
 
 ### Downsampling upsampling audio signals
 ```
