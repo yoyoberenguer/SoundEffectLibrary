@@ -282,10 +282,10 @@ sound = generate_silence(sound_, start_, end_, sample_rate_)
 ```
 ```python
 # See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
-generate_silence_array_mono_int16
-generate_silence_array_mono_float32
-generate_silence_array_stereo_int16
-generate_silence_array_stereo_float32
+generate_silence_array_mono_int16()
+generate_silence_array_mono_float32()
+generate_silence_array_stereo_int16()
+generate_silence_array_stereo_float32()
 ```
 
 ### Low pass filtering effect (signal processing)
