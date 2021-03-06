@@ -364,8 +364,7 @@ Trim leading and trailing silence from an audio signal
 This method detect in the audio singal values that are below a specific rms threshold (rms_threshold_) 
 and disregard these values when building the output audio signal. The comparison is applied only at
 the start and at the end of the record to avoid deleting short silence in an audio signal. 
-A new array is build to match the original audio signal minus the deleted records and a new sound object
-is return by the function.
+A new array is build to match the original audio signal minus the deleted records.
 ```
 ```python
 # Init the pygame mixer is stereo and signed int16 values
@@ -405,18 +404,19 @@ singnal will have their amplitude decreased compare to first frequency (carrier 
 
 ```
 ```python
+# Create a noise signal (random generated data), 1 second and ampliude max
 noise_signal(amplitude_ = 1.0, duration_  = 0.5, sample_rate_ = 44100)
-
+# Create a square generated signal, amplitude max, 1 second, freq 100 hz.
 square_signal(amplitude_ = 1.0, duration_  = 1.0, frequency_ = 100, sample_rate_ = 48000,
                     c_ = 0.0, phi_  = 0.0)
-                    
+# Create a triangular signal of 100hz                     
 triangular_signal(amplitude_ = 1.0, duration_  = 0.5, frequency_ = 100, sample_rate_ = 44100,
                         ramp_ = 0.5)
-                        
+# Create a cos signal, max amplitude, 100 hz                
 cos_signal(amplitude_ = 1.0, duration_ = 1.0, frequency_ = 100, sample_rate_ = 48000,
            c_ = 0.0, phi_ = 0.0)
-           
-cos_carrier(amplitude_ = 1.0, duration_  = 1.0, frequencies_ = [], sample_rate_ = 44100,
+# Create a carrier with modulated frequencies (100, 200, 300)
+cos_carrier(amplitude_ = 1.0, duration_  = 1.0, frequencies_ = [100, 200, 300], sample_rate_ = 44100,
                   c_ = 0.0,  phi_ = 0.0)
 ```
 
@@ -451,7 +451,6 @@ set_volume(sound_, float volume_=1.0)
 ### Reversing sound effect (playing backward)
 ```
 Reverse the selected audio, so that the end of the audio will be heard first and the beginning last.
-
 ```
 ```python
 reverse_sound(sound_)
