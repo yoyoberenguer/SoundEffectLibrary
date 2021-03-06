@@ -39,7 +39,6 @@ List of methods available for version 1.0.1
 - Pitch shifting and time stretching  
 
  Not included in this version (1.0.1)
- - high pass / bandpass filtering
  - Gaussian filtering
 ```    
 ## REQUIREMENT:
@@ -309,6 +308,28 @@ low_pass_mono_inplace_float32(sound_array_, fc_)
 low_pass_stereo_inplace_int16(sound_array_, fc_)
 low_pass_stereo_inplace_float32(sound_array_, fc_)
 
+```
+
+### High pass filtering effect (signal processing)
+```
+high-pass filters passes high frequencies fairly well; it is helpful as a filter to cut any unwanted 
+low-frequency components.
+```
+```python
+# apply a high pass filter to the sound effect (sound_) with the cut frequency defined by the 
+# variable fc_
+sound = high_pass(sound_, fc_)
+```
+
+
+### Bandpass filtering effect (signal processing)
+```
+high-pass filters passes a limited range of frequencies.
+```
+```python
+# apply a bandpass filter to the sound effect (sound_) with the cut frequency defined by the 
+# variable fc_
+sound =  band_pass(sound_, fc_low, fc_high, order=5)
 ```
 
 ### Harmonic (display signal frequency domain)
