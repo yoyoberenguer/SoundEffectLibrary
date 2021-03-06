@@ -282,9 +282,16 @@ sound = generate_silence(sound_, start_, end_, sample_rate_)
 ```
 ```python
 # See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
+# monophonic array, int16 
 generate_silence_array_mono_int16()
+
+# monophonic array float32
 generate_silence_array_mono_float32()
+
+# stereophonic array int16
 generate_silence_array_stereo_int16()
+
+# stereophonic arrat float32
 generate_silence_array_stereo_float32()
 ```
 
@@ -303,9 +310,17 @@ sound = low_pass(sound_, float fc_):
 ```python
 # See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
 # Below low pass filter will be applied inplace 
+
+# low pass filter on a monophonic array int16
 low_pass_mono_inplace_int16(sound_array_, fc_)
+
+# low pass filter on a monophonic array float32
 low_pass_mono_inplace_float32(sound_array_, fc_)
+
+# low pass filter on a stereophonic array int16
 low_pass_stereo_inplace_int16(sound_array_, fc_)
+
+# low pass filter on a stereophonic array float32
 low_pass_stereo_inplace_float32(sound_array_, fc_)
 
 ```
@@ -429,10 +444,16 @@ the window are deleted and will not be included in the final sound object
 ```
 ```python
 # See dedicated methods for monophonic & stereophonic data samples (int16 & float32)
+
+# Array monophonic int16 and float32
 time_shift_mono_int16(samples_, shift_, sample_rate_)
 time_shift_mono_float32(samples_, shift_, sample_rate_)
+
+# Array stereophonic int16 and float32
 time_shift_stereo_int16(samples_, shift_, sample_rate_)
 time_shift_stereo_float32(samples_, shift_, sample_rate_)
+
+# Shift a specific channel (samples_ must be a stereophonic array shape (n, 2))
 time_shift_channel(samples_, shift_, sample_rate_, int channel_=0)
 ```
 
@@ -456,9 +477,14 @@ Reverse the selected audio, so that the end of the audio will be heard first and
 reverse_sound(sound_)
 ```
 ```python
+# Reverse the sound (compatible mono and stereo int16 or float32)
 reverse_sound_beta(sound_)
+
+# monophonic int16 and float32
 reverse_stereo_int16(samples_)
 reverse_stereo_float32(samples_)
+
+# stereophonic int16 and float32
 reverse_mono_int16(samples_)
 reverse_mono_float32(samples_)
 ```
@@ -471,8 +497,12 @@ are made positive. Invert does not usually affect the sound of the audio at all,
 for audio cancellation. 
 ```
 ```python
+
+# monophonic int16 and float32
 invert_array_mono_int16(samples_)
 invert_array_mono_float32(samples_)
+
+# stereophonic int16 and float32
 invert_array_stereo_int16(samples_)
 invert_array_stereo_float32(samples_)
 ```
@@ -529,10 +559,11 @@ is not known. Median filtering is a useful and complementary addition to existin
 filtering techniques
 ```
 ```python
+# Apply a median filtering on data samples shape (n, 2) int16 ** not compatible with float32
 median_filter_stereo(samples_, dim = 3)
+
+# Apply neighbourhood averaging on data shape (n, 2) int16 ** not compatible with float32
 average_filter_stereo(samples_, dim = 3)
-```
-```python
 ```
 
 ### Create echo in the data sample
