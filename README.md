@@ -545,7 +545,13 @@ to the 5 o'clock position fully right. Audio mixing software replaces pan pots w
 on-screen virtual knobs or sliders which function like their physical counterparts.
 ```
 ```python
+# his method is panning a sound playing on the mixer to a specific angle (argument ange_) 
+# The data samples are modified **INPLACE** to reflect the new panning angle.
 panning_channels(channel0_, channel1_, samples_, angle_ = 0.0)
+
+# This method takes a sound object as argument and will return the equivalent with 
+# a panning effect. The original sound raw data is not modified as the method returns 
+# a new sound with the panning effect.
 panning_sound(sound_, angle_ = 0.0)
 ```
 ```python
@@ -576,6 +582,7 @@ by the bottom of a well, by a building, or by the walls of an enclosed room and 
 A true echo is a single reflection of the sound source.
 ```
 ```python
+
 echo_f32(sound_, echoes_, sample_rate_, delay_=1.0)
 echo(sound_, echoes_, sample_rate_, delay_=1)
 create_echo_from_channels(channel0_, channel1_, echoes_, delay_=10, sample_rate_=44100)
