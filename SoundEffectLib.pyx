@@ -5044,12 +5044,12 @@ cpdef slow_down_array_stereo(short [:, :] samples_, int n_):
 
 
 
-cpdef panning_channels(short [::1] channel0_,
-                       short [::1] channel1_,
-                       short [:, :] samples_,
-                       float angle_ = 0.0):
+cpdef panning_channels_int16(short [::1] channel0_,
+                             short [::1] channel1_,
+                             short [:, :] samples_,
+                             float angle_ = 0.0):
     """
-    FOR SOUND PLAYING INDEFINITELY ON THE MIXER
+    FOR SOUND PLAYING INDEFINITELY ON THE MIXER (COMPATIBLE INT16)
     
     This method is panning a sound playing on the mixer to a specific angle (argument ange_)
     The sound is panning from -45 degrees to 45 degrees.
@@ -5063,8 +5063,8 @@ cpdef panning_channels(short [::1] channel0_,
     :param channel0_: ndarray; take an 1d numpy.ndarray and create a contiguous memoryslice.Raw data represent 
                      the channel0 of the stereo sound   
     :param channel1_: ndarray; take an 1d numpy.ndarray and create a contiguous memoryslice.Raw data represent 
-                     the channel0 of the stereo sound
-    :param samples_ : ndarray; 2d numpy array representing the sound effect (stereophonic) type int 16
+                     the channel1 of the stereo sound
+    :param samples_ : ndarray; 2d numpy array representing the sound effect (stereophonic) type int16
     :param angle_   : float; angle in degrees 
     """
     if channel0_ is None:
@@ -5099,6 +5099,61 @@ cpdef panning_channels(short [::1] channel0_,
             samples_[i, 1] = <short>(channel1_[i] * volume_right)
 
 
+cpdef panning_channels_float32(float [:] channel0_,
+                               float [:] channel1_,
+                               float [:, :] samples_,
+                               float angle_ = 0.0):
+    """
+    FOR SOUND PLAYING INDEFINITELY ON THE MIXER (COMPATIBLE FLOAT32)
+    
+    This method is panning a sound playing on the mixer to a specific angle (argument ange_)
+    The sound is panning from -45 degrees to 45 degrees.
+    The data samples are modified inplace to reflect the new panning angle.
+    Channel0 & Channel1 are used for reference or to keep a fresh copy of the sound channel effect as panning
+    a sound result in decreasing the overall volume to zero resulting in loss of channel data 
+    when gain volume/reached zero. 
+    
+    * Compatible with stereo sound object only
+    
+    :param channel0_: ndarray; take an 1d numpy.ndarray and create a contiguous memoryslice.Raw data represent 
+                     the channel0 of the stereo sound   
+    :param channel1_: ndarray; take an 1d numpy.ndarray and create a contiguous memoryslice.Raw data represent 
+                     the channel1 of the stereo sound
+    :param samples_ : ndarray; 2d numpy array representing the sound effect (stereophonic) type float32
+    :param angle_   : float; angle in degrees 
+    """
+    if channel0_ is None:
+        raise ValueError(message21 % 1)
+
+    if channel1_ is None:
+        raise ValueError(message21 % 2)
+
+    if not is_monophonic(channel0_):
+        raise ValueError(message22 % 1)
+
+    if not is_monophonic(channel1_):
+        raise ValueError(message22 % 2)
+
+    if -45.0 >= angle_ >= 45.0:
+        angle_ = 0
+
+    cdef:
+        int width = <object>channel0_.shape[0]
+        int i
+        float c2 = angle_ * DEG_TO_RADIAN
+        float c1 = <float>sqrt(2.0)/2.0
+        float volume_left = <float>(c1 * (cos(c2) + sin(c2)))
+        float volume_right= <float>(c1 * (cos(c2) - sin(c2)))
+
+    if width == 0:
+        raise ValueError(message12)
+
+    with nogil:
+        for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            samples_[i, 0] = <float>(channel0_[i] * volume_left)
+            samples_[i, 1] = <float>(channel1_[i] * volume_right)
+
+
 cpdef panning_sound(sound_, float angle_ = 0.0):
 
     """
@@ -5108,7 +5163,7 @@ cpdef panning_sound(sound_, float angle_ = 0.0):
     a panning effect. The original sound raw data is not modified as the method returns 
     a new sound with the panning effect.
     
-    * Compatible with stereo sound object only
+    * Compatible with stereo sound object only (int16 or float32)
     
     :param sound_ : Sound object: Pygame.Sound object (must be a stereo sound)  
     :param angle_: float; Angle in degrees [-45.0 pass +45.0] -45 pan to the left + 45 pan to the right
@@ -5122,9 +5177,23 @@ cpdef panning_sound(sound_, float angle_ = 0.0):
     # raising an exception
     if -45.0 >= angle_ >= 45.0: angle_ = 0
 
+    try:
+        sound_array = sndarray.array(sound_)
+    except:
+        raise ValueError(message39)
+
     cdef:
-        short [:, :] samples = sndarray.array(sound_).astype(dtype=int16, copy=False)
-        int width = <object>samples.shape[0]
+        int width = <object>sound_array.shape[0]
+        int channel_number = len(sound_array.shape)
+
+    if channel_number == 1:
+        raise ValueError(message4 % sound_array.shape)
+
+    cdef:
+        short [:, :] samples_int16 = sound_array if (channel_number == 2 and
+                                               sound_array.dtype==int16) else empty((width, 2), int16)
+        float [:, :] samples_float32 = sound_array if (channel_number == 2 and
+                                               sound_array.dtype==int16) else empty((width, 2), float32)
         int i
         float c2 = angle_ * DEG_TO_RADIAN
         float c1 = <float>sqrt(2.0)/2.0
@@ -5134,12 +5203,20 @@ cpdef panning_sound(sound_, float angle_ = 0.0):
     if width == 0:
         raise ValueError(message12)
 
-    with nogil:
-        for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-            samples[i, 0] = <short>(samples[i, 0] * volume_left)
-            samples[i, 1] = <short>(samples[i, 1] * volume_right)
+    if sound_array.dtype == int16:
+        with nogil:
+            for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                samples_int16[i, 0] = <short>(samples_int16[i, 0] * volume_left)
+                samples_int16[i, 1] = <short>(samples_int16[i, 1] * volume_right)
+        return make_sound(asarray(samples_int16))
 
-    return make_sound(asarray(samples, dtype=int16))
+    else:
+        with nogil:
+            for i in prange(width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                samples_float32[i, 0] = <float>(samples_float32[i, 0] * volume_left)
+                samples_float32[i, 1] = <float>(samples_float32[i, 1] * volume_right)
+        return make_sound(asarray(samples_float32))
+
 
 
 
@@ -5224,21 +5301,20 @@ cpdef average_filter_stereo(short [:, :] samples_, unsigned short int dim = 3):
     return make_sound(asarray(new_array, dtype=int16))
 
 
-
-
-
-cpdef echo_f32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.0):
+cpdef echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.0):
     """
-    CREATE AN ECHO SOUND EFFECT
+    CREATE AN ECHO SOUND EFFECT 
+    
+    * Compatible with monophonic or stereophonic sound object (int16, float32)
 
     An echo effect causes a sound to repeat on a delay with diminishing volume, 
     simulating the real effect of an echo. 
     
-    :param sound_ : pygame.Sound; Stereo sound
+    :param sound_ : pygame.Sound; mono or Stereo sound object, int16 and float32 compatible
     :param echoes_: integer; Number of echo(s) 
     :param sample_rate_    : integer; sample rate (check valid sample rate variable FS)
     :param delay_ : float; time in ms. The amount of time between echoes.
-    :return       : return a sound with an echo sound effect
+    :return       : return a new sound with an echo sound effect (stereophonic or monophonic)
     """
 
     if not is_type_soundobject(sound_):
@@ -5253,8 +5329,170 @@ cpdef echo_f32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.
     if not (sample_rate_ in FS):
         raise ValueError(message15 % (sample_rate_, FS))
 
+    try:
+        array_ = pygame.sndarray.samples(sound_)
+    except Exception as e:
+        raise ValueError(message39)
+
     cdef:
-        float [:, :] sound = sndarray.samples(sound_).astype(dtype=float32, copy=False)
+        int width = <object>array_.shape[0]
+        int channel_number = len(array_.shape)
+        int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
+
+        short [::1] mono_int16 = zeros(width * echoes_ + c1 * echoes_, int16) if \
+            (channel_number==1 and array_.dtype == int16) else empty(width, int16)
+        float [::1] mono_float32 = zeros(width * echoes_ + c1 * echoes_, float32) if \
+            (channel_number==1 and array_.dtype == float32) else empty(width, float32)
+        short [:, :] stereo_int16 = zeros((width * echoes_ + c1 * echoes_, 2), int16) \
+            if (channel_number==2 and array_.dtype == int16) else empty((width, 2), int16)
+        float [:, :] stereo_float32 = zeros((width * echoes_ + c1 * echoes_, 2), float32) if \
+            (channel_number==2 and array_.dtype == float32) else empty((width, 2), float32)
+
+        short [::1] mono_int16_data = array_ if (channel_number==1 and array_.dtype == int16) \
+            else empty(width, int16)
+        float [::1] mono_float32_data = array_ if (channel_number==1 and array_.dtype == float32) \
+            else empty(width, float32)
+        short [:, :] stereo_int16_data = array_ if (channel_number==2 and array_.dtype == int16) \
+            else empty((width, 2), int16)
+        float [:, :] stereo_float32_data = array_ if (channel_number==2 and array_.dtype == float32) \
+            else empty((width, 2), float32)
+
+
+        int i, j, l
+
+    if width == 0:
+        raise ValueError(message12)
+
+    if channel_number == 1:
+        if array_.dtype == int16:
+            with nogil:
+                for j in prange(0, echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                    for i in prange(0, width):
+                        l = i + j * width + c1 * j
+                        mono_int16[l] = mono_int16_data[i]  / (2 ** j)
+            return make_sound(asarray(mono_int16))
+
+        elif array_.dtype == float32:
+            with nogil:
+                for j in prange(0, echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                    for i in prange(0, width):
+                        l = i + j * width + c1 * j
+                        mono_float32[l] = mono_float32_data[i]  / (2 ** j)
+            return make_sound(asarray(mono_float32))
+
+    elif channel_number == 2:
+        if array_.dtype == int16:
+            with nogil:
+                for j in prange(0, echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                    for i in prange(0, width):
+                        l = i + j * width + c1 * j
+                        stereo_int16[l, 0], stereo_int16[l, 1] = \
+                            stereo_int16_data[i, 0]  / (2 ** j), stereo_int16_data[i, 1] / (2 ** j)
+            return make_sound(asarray(stereo_int16))
+
+        if array_.dtype == float32:
+            with nogil:
+                for j in prange(0, echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                    for i in prange(0, width):
+                        l = i + j * width + c1 * j
+                        stereo_float32[l, 0], stereo_float32[l, 1] = \
+                            stereo_float32_data[i, 0]  / (2 ** j), stereo_float32_data[i, 1] / (2 ** j)
+            return make_sound(asarray(stereo_float32))
+
+
+
+cpdef echo_mono_float32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.0):
+    """
+    CREATE AN ECHO SOUND EFFECT 
+    
+    * Compatible with monophonic sound object (float32)
+
+    An echo effect causes a sound to repeat on a delay with diminishing volume, 
+    simulating the real effect of an echo. 
+    
+    :param sound_ : pygame.Sound; Monophonic sound object, float32 compatible
+    :param echoes_: integer; Number of echo(s) 
+    :param sample_rate_    : integer; sample rate (check valid sample rate variable FS)
+    :param delay_ : float; time in ms. The amount of time between echoes.
+    :return       : return a new sound with an echo sound effect
+    """
+
+    if not is_type_soundobject(sound_):
+        raise ValueError(message23 % 1)
+
+    if echoes_ <= 0:
+        raise ValueError(message24 % "echoes_")
+
+    if delay_ <= 0:
+        raise ValueError(message24 % "delay_")
+
+    if not (sample_rate_ in FS):
+        raise ValueError(message15 % (sample_rate_, FS))
+
+    try:
+        array_ = sndarray.samples(sound_)
+    except:
+        raise ValueError(message39)
+
+    if not is_monophonic(array_):
+        raise ValueError(message27 % array_.dtype)
+
+    cdef:
+        float [:] sound = array_
+        int width = <object>sound.shape[0]
+        int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
+        float [:] new_array = zeros(width * echoes_ + c1 * echoes_, dtype=float32)
+        int i, j, l
+
+    if width == 0:
+        raise ValueError(message12)
+
+    with nogil:
+        for j in prange(echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            for i in prange(width):
+                l = i + j * width + c1 * j
+                new_array[l] = sound[i]  / (2 ** j)
+
+    return make_sound(asarray(new_array))
+
+cpdef echo_stereo_float32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.0):
+    """
+    CREATE AN ECHO SOUND EFFECT 
+    
+    * Compatible with stereophonic sound object (float32)
+
+    An echo effect causes a sound to repeat on a delay with diminishing volume, 
+    simulating the real effect of an echo. 
+    
+    :param sound_ : pygame.Sound; Stereo sound object, float32 compatible
+    :param echoes_: integer; Number of echo(s) 
+    :param sample_rate_    : integer; sample rate (check valid sample rate variable FS)
+    :param delay_ : float; time in ms. The amount of time between echoes.
+    :return       : return a new sound with an echo sound effect
+    """
+
+    if not is_type_soundobject(sound_):
+        raise ValueError(message23 % 1)
+
+    if echoes_ <= 0:
+        raise ValueError(message24 % "echoes_")
+
+    if delay_ <= 0:
+        raise ValueError(message24 % "delay_")
+
+    if not (sample_rate_ in FS):
+        raise ValueError(message15 % (sample_rate_, FS))
+
+    try:
+        array_ = sndarray.samples(sound_)
+    except:
+        raise ValueError(message39)
+
+    if not is_stereophonic(array_):
+        raise ValueError(message27 % array_.dtype)
+
+    cdef:
+        float [:, :] sound = array_
         int width = <object>sound.shape[0]
         int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
         float [:, ::1] new_array = empty(
@@ -5270,19 +5508,21 @@ cpdef echo_f32(sound_, short echoes_, unsigned int sample_rate_, float delay_=1.
                 l = i + j * width + c1 * j
                 new_array[l, 0], new_array[l, 1] = sound[i, 0]  / (2 ** j), sound[i, 1] / (2 ** j)
 
-    return make_sound(asarray(new_array, dtype=int16))
+    return make_sound(asarray(new_array))
 
 
-cpdef echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
+cpdef echo_mono_int16(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
     """
     CREATE AN ECHO SOUND EFFECT 
 
+    * Compatible with monophonic sound object (int16)
+    
     An echo effect causes a sound to repeat on a delay with diminishing volume, 
     simulating the real effect of an echo. 
     
     * Compatible with stereo sound object only
     
-    :param sound_ : pygame.Sound; Stereo sound 
+    :param sound_ : pygame.Sound; Monophonic sound int16
     :param echoes_: integer; Number of echo(s)
     :param sample_rate_ : integer; sample rate (check valid sample rate variable FS)
     :param delay_ : float; time in ms. The amount of time between echoes.
@@ -5301,12 +5541,75 @@ cpdef echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
     if not (sample_rate_ in FS):
         raise ValueError(message15 % (sample_rate_, FS))
 
+    try:
+        array_ = sndarray.samples(sound_)
+    except:
+        raise ValueError(message39)
+
+    if is_valid_mono_array(array_) and array_.dtype==int16:
+        raise ValueError(message27 % array_.dtype)
+
     cdef:
-        short [:, :] sound_stereo = sndarray.samples(sound_).astype(dtype=int16, copy=False)
+        short [:] sound_stereo = array_
         int width = <object>sound_stereo.shape[0]
         int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
-        short [:, ::1] new_array = \
-            zeros((width * echoes_ + c1 * echoes_, 2), dtype=int16)
+        short [:] new_array = zeros(width * echoes_ + c1 * echoes_, dtype=int16)
+        int i, j, l
+
+    if width == 0:
+        raise ValueError(message12)
+
+    with nogil:
+        for j in prange(echoes_, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            for i in prange(width):
+                l = i + j * width + c1 * j
+                new_array[l] = sound_stereo[i] >> j
+
+    return make_sound(asarray(new_array))
+
+cpdef echo_stereo_int16(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
+    """
+    CREATE AN ECHO SOUND EFFECT 
+
+    * Compatible with stereophonic sound object (int16)
+    
+    An echo effect causes a sound to repeat on a delay with diminishing volume, 
+    simulating the real effect of an echo. 
+    
+    * Compatible with stereo sound object only
+    
+    :param sound_ : pygame.Sound; Stereo sound int16
+    :param echoes_: integer; Number of echo(s)
+    :param sample_rate_ : integer; sample rate (check valid sample rate variable FS)
+    :param delay_ : float; time in ms. The amount of time between echoes.
+    :return       : return a sound with an echo sound effect
+    """
+
+    if not is_type_soundobject(sound_):
+        raise ValueError(message23 % 1)
+
+    if echoes_ <= 0:
+        raise ValueError(message24 % "echoes_")
+
+    if delay_ < 0:
+        raise ValueError(message24 % "delay_")
+
+    if not (sample_rate_ in FS):
+        raise ValueError(message15 % (sample_rate_, FS))
+
+    try:
+        array_ = sndarray.samples(sound_)
+    except:
+        raise ValueError(message39)
+
+    if is_valid_stereo_array(array_) and array_.dtype==int16:
+        raise ValueError(message27 % array_.dtype)
+
+    cdef:
+        short [:, :] sound_stereo = array_
+        int width = <object>sound_stereo.shape[0]
+        int c1 = <int>(delay_/1000.0 * <float>sample_rate_)
+        short [:, ::1] new_array = zeros((width * echoes_ + c1 * echoes_, 2), dtype=int16)
         int i, j, l
 
     if width == 0:
@@ -5318,7 +5621,7 @@ cpdef echo(sound_, short echoes_, unsigned int sample_rate_, float delay_=1):
                 l = i + j * width + c1 * j
                 new_array[l, 0], new_array[l, 1] = sound_stereo[i, 0] >> j, sound_stereo[i, 1] >> j
 
-    return make_sound(asarray(new_array, dtype=int16))
+    return make_sound(asarray(new_array))
 
 # TODO WORKS BUT NEED RE-THINKING
 cpdef create_echo_from_channels(short [:] channel0_, short [:] channel1_,
