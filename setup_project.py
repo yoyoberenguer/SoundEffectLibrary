@@ -11,10 +11,8 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-ext_modules = [Extension("SoundServer", ["SoundServer.pyx"]),
-               Extension("SoundEffectLib", ["SoundEffectLib.pyx"],
+ext_modules = [Extension("SoundEffectLib", ["SoundEffectLib.pyx"],
                include_dirs=[numpy.get_include()], language="c++"),
-
               ]
 
 #
