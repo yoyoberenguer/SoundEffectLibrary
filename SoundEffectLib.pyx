@@ -1,7 +1,6 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, optimize.use_switch=True, optimize.unpack_method_calls=True, cdivision=True
 # encoding: utf-8
 
-# TODO TESTING FFT, changing complex forms and IFFT back
 from __future__ import print_function
 
 __author__ = "Yoann Berenguer"
@@ -5193,7 +5192,7 @@ cpdef panning_sound(sound_, float angle_ = 0.0):
         short [:, :] samples_int16 = sound_array if (channel_number == 2 and
                                                sound_array.dtype==int16) else empty((width, 2), int16)
         float [:, :] samples_float32 = sound_array if (channel_number == 2 and
-                                               sound_array.dtype==int16) else empty((width, 2), float32)
+                                               sound_array.dtype==float32) else empty((width, 2), float32)
         int i
         float c2 = angle_ * DEG_TO_RADIAN
         float c1 = <float>sqrt(2.0)/2.0
