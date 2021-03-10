@@ -547,7 +547,8 @@ on-screen virtual knobs or sliders which function like their physical counterpar
 ```python
 # his method is panning a sound playing on the mixer to a specific angle (argument ange_) 
 # The data samples are modified **INPLACE** to reflect the new panning angle.
-panning_channels(channel0_, channel1_, samples_, angle_ = 0.0)
+panning_channels_int16(channel0_, channel1_, samples_, angle_ = 45.0)
+panning_channels_float32(channel0_, channel1_, samples_, angle_ = -45.0)
 
 # This method takes a sound object as argument and will return the equivalent with 
 # a panning effect. The original sound raw data is not modified as the method returns 
