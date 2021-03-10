@@ -585,9 +585,11 @@ by the bottom of a well, by a building, or by the walls of an enclosed room and 
 A true echo is a single reflection of the sound source.
 ```
 ```python
-
-echo_f32(sound_, echoes_, sample_rate_, delay_=1.0)
 echo(sound_, echoes_, sample_rate_, delay_=1)
+echo_mono_float32(sound_, echoes_, sample_rate_, delay_=1.0)
+echo_stereo_float32(sound_, echoes_, sample_rate_, delay_=1.0)
+echo_mono_int16(sound_, echoes_, sample_rate_, delay_=1):
+echo_stereo_int16(sound_, echoes_, sample_rate_, delay_=1):
 create_echo_from_channels(channel0_, channel1_, echoes_, delay_=10, sample_rate_=44100)
 create_rev_echo_from_sound(sound_, echoes_, delay_=10000, sample_rate_=44100)
 ```
