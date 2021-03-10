@@ -20,6 +20,8 @@ List of methods available for version 1.0.1
 - Tinnitus effect
 - Generate silence 
 - Low pass filter 
+- High pass filter
+- Band pass filter
 - Harmonic representation
 - Noise signal
 - Square signal
