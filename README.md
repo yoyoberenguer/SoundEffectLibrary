@@ -518,8 +518,12 @@ You can design you own sound effect by mixing two sound arrays (same length) tog
 to create a third sound and save it onto disk.
 ```
 ```python
+# Add two sounds together type int16 stereophonic, set_gain is set to False by default
+# set_gain True, raise the gain/volume for both sounds by a factor f=1.0 / max_value
+adding_stereo_int16(sound0, sound1, set_gain_ = False)
+# Add two sounds together stereophonic type float32 
+adding_stereo_float32(sound0, sound1, set_gain_ = False)
 add_mono(sound_array0, sound_array1)
-adding_stereo_int16(sound0, sound1)
 add_stereo(sound0, sound1)
 ```
 
