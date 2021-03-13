@@ -196,8 +196,7 @@ import logging
 
 cdef extern from 'QuickSort.c' nogil:
     int * quickSort(int arr[], int low, int high)nogil
-    # double lowpass (double *x, double *y, int M, double xm1)nogil
-
+    float f_max(float arr[], int element)nogil
 
 cdef extern from 'randnumber.c':
     void init_clock()nogil
@@ -4688,6 +4687,249 @@ cpdef invert_array_stereo_float32(float [:, :] samples_):
     return make_sound(asarray(samples_))
 
 
+cpdef void adaptative_g_stereo_float(float [:, :] array_):
+    """
+    Increase data sample signal amplitude by a factor f given by 1.0 / max_value. 
+    The max value correspond to the maximum value within the array. If the maximum 
+    value in the data sample is 0.5, f will be 2.0 and the signal amplitude will 
+    be x2 and still remain in the range [-1.0 ... 1.0] without affecting the frequency domain 
+    or phase.
+    
+    :param array_: numpy.ndarray; array shape (n, 2) float32 
+    :return: void; operation inplace
+    """
+
+    cdef:
+        float max_v = 0.0, f = 1.0
+        int i = 0
+        int width = len(<object>array_[:, 0])
+
+
+
+    with nogil:
+        max_v = f_max(&array_[0, 0], width)
+
+        # silence or empty data sample will have max value = 0
+        # Return without changing the array.
+        if max_v == 0:
+            return
+
+        if max_v < 1.0:
+            f = 1.0 / max_v
+            for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                array_[i, 0] *= f
+                array_[i, 1] *= f
+
+
+cpdef void adaptative_g_mono_float(float [:] array_):
+    """
+    Increase data sample signal amplitude by a factor f given by 1.0 / max_value. 
+    The max value correspond to the maximum value within the array. If the maximum 
+    value in the data sample is 0.5, f will be 2.0 and the signal amplitude will 
+    be x2 and still remain in the range [-1.0 ... 1.0] without affecting the frequency domain 
+    or phase.
+    
+    :param array_: numpy.ndarray; array shape (n,) float32 
+    :return: void; operation inplace
+    """
+
+    cdef:
+        float max_v = 0.0, f = 1.0
+        int i = 0
+        int width = len(<object>array_)
+
+    with nogil:
+        max_v = f_max(&array_[0], width)
+        # silence or empty data sample will have max value = 0
+        # Return without changing the array.
+        if max_v == 0:
+            return
+        if max_v < 1.0:
+            f = 1.0 / max_v
+            for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                array_[i] *= f
+
+
+cpdef void adaptative_g_stereo_int16(short [:, :] array_):
+    """
+    Increase data sample signal amplitude by a factor f given by 1.0 / max_value.
+    The max value correspond to the maximum value within the array. If the maximum
+    value in the data sample is 0.5, f will be 2.0 and the signal amplitude will
+    be x2 and still remain in the range [SHRT_MIN... SHRT_MAX] without affecting the frequency domain
+    or phase.
+
+    :param array_: numpy.ndarray; array shape (n, 2) int16
+    :return: void; operation inplace
+    """
+    cdef:
+        float max_v = 0, v1, v2, f = 1.0
+        short f_pos = SHRT_MAX  # 32767
+        short f_neg = SHRT_MIN # -32767 - 1
+        int i = 0
+        int width = len(<object>array_[:, 0])
+        float [:, :] tmp_array = normalize_array_stereo(array_)
+
+    with nogil:
+        max_v = f_max(&tmp_array[0, 0], width)
+
+        # silence or empty data sample will have max value = 0
+        # Return without changing the array.
+        if max_v == 0:
+            return
+
+        if max_v < 1.0:
+            f = 1.0 / max_v
+            for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                v1 =  tmp_array[i, 0] * f
+                v2 =  tmp_array[i, 1] * f
+                if v1 > 0:
+                    v1 = v1 * <float>f_pos
+                else:
+                    v1 = -v1 * <float>f_neg
+                if v2 > 0:
+                    v2 = v2 * <float>f_pos
+                else:
+                    v2 = -v2 * <float>f_neg
+                array_[i, 0] = <short>v1
+                array_[i, 1] = <short>v2
+
+
+
+cpdef void adaptative_g_mono_int16(short [:] array_):
+    """
+    Increase data sample signal amplitude by a factor f given by 1.0 / max_value. 
+    The max value correspond to the maximum value within the array. If the maximum 
+    value in the data sample is 0.5, f will be 2.0 and the signal amplitude will 
+    be x2 and still remain in the range [SHRT_MIN... SHRT_MAX] without affecting the frequency domain 
+    or phase.
+    
+    :param array_: numpy.ndarray; array shape (n,) int16 
+    :return: void; operation inplace
+    """
+
+    cdef:
+        float max_v = 0, v, f = 1.0
+        short f_pos = SHRT_MAX  # 32767
+        short f_neg = SHRT_MIN # -32767 - 1
+        int i = 0
+        int width = len(<object>array_)
+        float [:] tmp_array = normalize_array_mono(array_)
+
+    with nogil:
+        # todo max_v cannot be zero
+        max_v = f_max(&tmp_array[0], width)
+
+        # silence or empty data sample will have max value = 0
+        # Return without changing the array.
+        if max_v == 0:
+            return
+
+        if max_v < 1.0:
+            f = 1.0 / max_v
+            for i in prange(0, width, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+                v =  tmp_array[i] * f
+                if v > 0:
+                    v = v * <float>f_pos
+                else:
+                    v = -v * <float>f_neg
+                array_[i] = <short>v
+
+
+cpdef adding_stereo_int16(short [:, :] sound0, short[:, :] sound1, bint set_gain_ = False):
+    """
+    MIX TWO STEREOPHONIC SOUNDS TOGETHER (COMPATIBLE INT16)
+    
+    * Data samples can have different sizes, the final sound will be the combination of 
+    both sounds but the final sound length will be equal to the shortest sound.
+    * Both data samples values are multiply by 1/2 before the mix to cap the values 
+    
+    * Compatible with stereophonic sounds int16
+    
+    :param sound0: numpy.ndarray; First sound (stereophonic) 2d numpy array shape (n, 2) int16 datatype
+    :param sound1: numpy.ndarray; Second sound to mix (stereophonic). 2d numpy array shape (m, 2) int16
+    :param set_gain_: bool; set the gain (increase source data samples values). When set to True the data 
+    samples values are multiply par a factor f corresponding to the inverse of the maximum value f=1.0/max_value.
+    Both sound data samples will received a proportional volume boost.
+    :return : pygame.mixer.Sound; Return a pygame Sound with length equal to the shortest sounds passed as 
+    argument to the method.
+    """
+
+    if not is_valid_stereo_array(sound0):
+        raise ValueError(message26 % 1)
+
+    if not is_valid_stereo_array(sound1):
+        raise ValueError(message26 % 2)
+
+    cdef:
+        int width0 = <object>sound0.shape[0]
+        int width1 = <object>sound1.shape[0]
+        int minimum = min(width0, width1)
+        int i = 0
+        short [:, :] new_array = empty((minimum, 2), int16)
+
+    if minimum == 0:
+        raise ValueError(message12)
+
+    if set_gain_:
+        adaptative_g_stereo_int16(sound0)
+        adaptative_g_stereo_int16(sound1)
+
+    with nogil:
+        for i in prange(0, minimum, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            new_array[i, 0] = <short>((sound0[i, 0] + sound1[i, 0]) / 2.0)
+            new_array[i, 1] = <short>((sound0[i, 1] + sound1[i, 1]) / 2.0)
+
+    return make_sound(asarray(new_array))
+
+cpdef adding_stereo_float32(float [:, :] sound0, float[:, :] sound1, bint set_gain_ = False):
+    """
+    MIX TWO STEREOPHONIC SOUNDS TOGETHER (COMPATIBLE FLOAT32)
+    
+    * Data samples can have different sizes, the final sound will be the combination of 
+    both sounds but the final sound length will be equal to the shortest sound.
+    * Both data samples values are multiply by 1/2 before the mix to cap the values 
+    
+    * Compatible with stereophonic sounds
+    
+    :param sound0: numpy.ndarray; First sound (stereophonic) 2d numpy array shape (n, 2) float32 datatype
+    :param sound1: numpy.ndarray; Second sound to mix (stereophonic). 2d numpy array shape (m, 2) float32
+    :param set_gain_: bool; set the gain (increase source data samples values). When set to True the data 
+    samples values are multiply par a factor f corresponding to the inverse of the maximum value f=1.0/max_value.
+    Both sound data samples will received a proportional volume boost.
+    :return : pygame.mixer.Sound; Return a pygame Sound with length equal to the shortest sounds passed as 
+    argument to the method.
+    """
+
+    if not is_valid_stereo_array(sound0):
+        raise ValueError(message26 % 1)
+
+    if not is_valid_stereo_array(sound1):
+        raise ValueError(message26 % 2)
+
+    cdef:
+        int width0 = <object>sound0.shape[0]
+        int width1 = <object>sound1.shape[0]
+        int minimum = min(width0, width1)
+        int  i = 0
+        float [:, :] new_array = empty((minimum, 2), float32)
+        float max_v = 0, f = 1.0
+
+    if minimum == 0:
+        raise ValueError(message12)
+
+    if set_gain_:
+        adaptative_g_stereo_float(sound0)
+        adaptative_g_stereo_float(sound1)
+
+    with nogil:
+
+        for i in prange(0, minimum, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
+            new_array[i, 0] = <float>(sound0[i, 0] + sound1[i, 0]) / 2.0
+            new_array[i, 1] = <float>(sound0[i, 1] + sound1[i, 1]) / 2.0
+
+    return make_sound(asarray(new_array))
+
+
 cpdef add_mono(sound_array0, sound_array1):
     """
     MIX TWO DATA SAMPLES (ARRAY) TOGETHER  
@@ -4757,51 +4999,6 @@ cpdef add_mono(sound_array0, sound_array1):
             new_array[i] = (s0[i] + s1[i]) * 0.5
 
     return inverse_normalize_mono(new_array)
-
-
-cpdef adding_stereo_int16(short [:, :] sound0, short[:, :] sound1):
-    """
-    MIX TWO STEREOPHONIC SOUNDS TOGETHER 
-    
-    The final sound will be the combination of both sound but the final sound length will 
-    always match the smallest of both sounds
-    
-    * Compatible with stereophonic sounds
-    
-    :param sound0: numpy.ndarray; First sound (stereophonic) 2d numpy array shape (n, 2) int16 datatype
-    :param sound1: numpy.ndarray; Second sound to mix (stereophonic). 2d numpy array shape (m, 2) int16
-    :return : pygame.mixer.Sound; Return a pygame Sound with length equal to the shortest sounds passed as 
-    argument to the method (values are capped to SHRT_MAX and SHRT_MIN).
-    """
-
-    if not is_valid_stereo_array(sound0):
-        raise ValueError(message26 % 1)
-
-    if not is_valid_stereo_array(sound1):
-        raise ValueError(message26 % 2)
-
-    cdef:
-        int width0 = <object>sound0.shape[0]
-        int width1 = <object>sound1.shape[0]
-        int minimum = min(width0, width1)
-        int i = 0, r0, r1
-        short [:, :] new_array = empty((minimum, 2), int16)
-
-    if minimum == 0:
-        raise ValueError(message12)
-
-    with nogil:
-        for i in prange(0, minimum, schedule=SCHEDULE, num_threads=THREAD_NUMBER):
-            r0 = sound0[i, 0] + sound1[i, 0]
-            r1 = sound0[i, 1] + sound1[i, 1]
-            if r0 > SHRT_MAX: r0 = SHRT_MAX
-            if r0 < SHRT_MIN: r0 = SHRT_MIN
-            if r1 > SHRT_MAX: r1 = SHRT_MAX
-            if r1 < SHRT_MIN: r1 = SHRT_MIN
-            new_array[i, 0] = r0
-            new_array[i, 1] = r1
-
-    return make_sound(asarray(new_array))
 
 
 cpdef add_stereo(sound0, sound1):

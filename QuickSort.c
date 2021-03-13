@@ -86,6 +86,20 @@ int * quickSort(int arr[], int low, int high)
 return arr;
 }
 
+float f_max(float arr[], int element)
+{
+
+ int i = 1;
+ float maximum = fabs(arr[0]);
+ for (i;i<element;i++) {
+    if (fabs(arr[i]) > maximum) {
+        maximum = fabs(arr[i]);}
+ }
+ return maximum;
+}
+
+
+
 
 int main(){
 
@@ -103,6 +117,9 @@ int main(){
   for (i=0;i<N;i++) {
     printf("x[%d]=%f\ty[%d]=%f\n",i,x[i],i,y[i]);
   }
-  exit(0);
+
+
+  float z[10] = {10,-8000000,150,400,250,13.5,8000001,523,-15.054,100.0};
+  printf("RESULT : %f ", f_max(z, 10));
 return 0;
 }
