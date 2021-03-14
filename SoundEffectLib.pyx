@@ -107,7 +107,6 @@ Finished generating code
 
 
 
-
 """
 FLAG USED
 @cython.optimize.unpack_method_calls(True)
@@ -2954,13 +2953,12 @@ cpdef remove_silence_mono_int16(short [::1] samples_, rms_threshold_=None, bint 
         int count = 0
         int i = 0, j = width, k =0
         float rms_value
-        float max_db, avg_db
+        float avg_db
         bint silence_start, silence_end
 
     if width == 0:
         raise ValueError(message12)
 
-    max_db = rms_max_mono_float32(normalized_array)
     avg_db = rms_value_mono(samples_)
 
     if not bypass_avg_:
@@ -3026,13 +3024,12 @@ cpdef remove_silence_mono_float32(float [::1] samples_, rms_threshold_=None, bin
         int count = 0
         int i = 0, j = width, k =0
         float rms_value
-        float max_db, avg_db
+        float avg_db
         bint silence_start, silence_end
 
     if width == 0:
         raise ValueError(message12)
 
-    max_db = rms_max_mono_float32(samples_)
     avg_db = rms_value_mono(samples_)
 
     if not bypass_avg_:
@@ -5742,7 +5739,7 @@ cpdef echo_mono_int16(sound_, short echoes_, unsigned int sample_rate_, float de
     except:
         raise ValueError(message39)
 
-    if is_valid_mono_array(array_) and array_.dtype==int16:
+    if not (is_valid_mono_array(array_) and array_.dtype==int16):
         raise ValueError(message27 % array_.dtype)
 
     cdef:
@@ -5798,7 +5795,7 @@ cpdef echo_stereo_int16(sound_, short echoes_, unsigned int sample_rate_, float 
     except:
         raise ValueError(message39)
 
-    if is_valid_stereo_array(array_) and array_.dtype==int16:
+    if not (is_valid_stereo_array(array_) and array_.dtype==int16):
         raise ValueError(message27 % array_.dtype)
 
     cdef:
