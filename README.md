@@ -326,8 +326,8 @@ low_pass_stereo_inplace_int16(sound_array_, fc_)
 
 # low pass filter on a stereophonic array float32
 low_pass_stereo_inplace_float32(sound_array_, fc_)
-
 ```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/LowPassFilter.png)
 
 ### High pass filtering effect (signal processing)
 ```
