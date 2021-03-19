@@ -241,7 +241,10 @@ fade_in_mono_inplace_int16()
 fade_in_mono_inplace_float32()
 fade_in_stereo_inplace_int16()
 fade_in_stereo_inplace_float32()
+```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/FadeInEffect.png)
 
+```python
 # Fade out sound object (sound_) given a starting time (fade_out_ in seconds) and the sample rate 
 fade_out(sound_, fade_out_, sample_rate_)
 
