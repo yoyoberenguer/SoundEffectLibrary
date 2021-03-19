@@ -334,12 +334,13 @@ low_pass_stereo_inplace_float32(sound_array_, fc_)
 high-pass filters passes high frequencies fairly well; it is helpful as a filter to cut any unwanted 
 low-frequency components.
 ```
+
 ```python
 # apply a high pass filter to the sound effect (sound_) with the cut frequency defined by the 
 # variable fc_
 sound = high_pass(sound_, fc_)
 ```
-
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/HighPassFilter.png)
 
 ### Bandpass filtering effect (signal processing)
 ```
