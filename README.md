@@ -272,6 +272,7 @@ The sound object can be monophonic or stereophonic (datatype int16 or float32)
 ```python
 sound = tinnitus_fade_out(0.5, duration_=5.0, frequency_=5000)
 ```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/TinnitusFadeOut.png)
 
 ### Generate a silence in the data sample  
 ```
