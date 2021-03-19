@@ -378,7 +378,8 @@ will be applied to the first channel of a stereophonic sound.
 surface_, array_ = harmonics(samples_, sampling_rate_=44100, width=255, height=255)
 
 ```
-
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/Harmonics.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/harmonics_details.png)
 
 ### Remove silence from data sample
 ```
