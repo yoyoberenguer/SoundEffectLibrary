@@ -606,7 +606,8 @@ echo_stereo_int16(sound_, echoes_, sample_rate_, delay_=1):
 create_echo_from_channels(channel0_, channel1_, echoes_, delay_=10, sample_rate_=44100)
 create_rev_echo_from_sound(sound_, echoes_, delay_=10000, sample_rate_=44100)
 ```
-
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/SoundEffect.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/EchoSoundEffect.png)
 
 ### Time stretching and pitch shifting
 ```
