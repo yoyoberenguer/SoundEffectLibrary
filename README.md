@@ -183,9 +183,7 @@ inverse_normalize_stereo_asarray(array)
 
 # usage for inverse normalisation monophonic audio sample 32bit format
 inverse_normalize_mono_asarray(array)
-![image](https://user-images.githubusercontent.com/38462796/111796211-dcd4d980-88bf-11eb-98bd-5d0a51631139.png)
-
-![alt text](https://github.com/yoyoberenguer/Fisheye/blob/master/lake-wallpapers.jpg)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/master/normalisation.png)
 
 ```
 
