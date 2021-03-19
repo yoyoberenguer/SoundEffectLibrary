@@ -185,7 +185,8 @@ inverse_normalize_stereo_asarray(array)
 inverse_normalize_mono_asarray(array)
 ```
 ![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/normalisation.png)
-https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/pulse.ogg
+
+<audio id="pulse" src="pulse.ogg"></audio><button onclick="playAudio('pulse')" type="button">play</button>
 
 ### RMS calculation
 ```
