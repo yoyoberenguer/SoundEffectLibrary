@@ -258,7 +258,7 @@ fade_out_mono_inplace_float32()
 fade_out_stereo_inplace_float32()
 fade_out_stereo_inplace_int16()
 ```
-![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/FadeoutEffect.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/FadeOutEffect.png)
 
 ### Tinnitus effects
 ```
