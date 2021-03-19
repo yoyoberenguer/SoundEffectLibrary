@@ -499,6 +499,7 @@ reverse_stereo_float32(samples_)
 reverse_mono_int16(samples_)
 reverse_mono_float32(samples_)
 ```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/ReverseSoundEffect.png)
 
 ### Inversion sound effect 
 ```
