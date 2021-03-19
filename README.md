@@ -571,8 +571,7 @@ panning_channels_float32(channel0_, channel1_, samples_, angle_ = -45.0)
 # a new sound with the panning effect.
 panning_sound(sound_, angle_ = 0.0)
 ```
-```python
-```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/PanningEffect.png)
 
 ### Median and averaging filter (signal processing)
 ```
