@@ -442,7 +442,10 @@ cos_signal(amplitude_ = 1.0, duration_ = 1.0, frequency_ = 100, sample_rate_ = 4
 cos_carrier(amplitude_ = 1.0, duration_  = 1.0, frequencies_ = [100, 200, 300], sample_rate_ = 44100,
                   c_ = 0.0,  phi_ = 0.0)
 ```
-
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/NoiseSignal.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/SquareSignal.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/TriangularSignal.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/CosineSignal.png)
 
 ### Time shifting 
 ```
