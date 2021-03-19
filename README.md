@@ -352,6 +352,8 @@ high-pass filters passes a limited range of frequencies.
 sound =  band_pass(sound_, fc_low, fc_high, order=5)
 ```
 
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/passbandFilter.png)
+
 ### Harmonic (display signal frequency domain)
 ```
 A harmonic of such a wave is a wave with a frequency that is a positive integer multiple of the frequency
