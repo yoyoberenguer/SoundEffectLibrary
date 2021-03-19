@@ -646,3 +646,4 @@ PitchShiftingBernsee(pitchShift, numSampsToProcess, fftFrameSize, osamp, sampleR
 ```
 ```python
 ```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/PitchShiftingBernsee.png)
