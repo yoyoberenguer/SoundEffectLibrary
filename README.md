@@ -298,6 +298,7 @@ generate_silence_array_stereo_int16()
 # stereophonic arrat float32
 generate_silence_array_stereo_float32()
 ```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/GenerateSilence.png)
 
 ### Low pass filtering effect (signal processing)
 ```
