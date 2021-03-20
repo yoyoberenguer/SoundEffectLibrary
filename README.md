@@ -469,7 +469,7 @@ time_shift_stereo_float32(samples_, shift_, sample_rate_)
 # Shift a specific channel (samples_ must be a stereophonic array shape (n, 2))
 time_shift_channel(samples_, shift_, sample_rate_, int channel_=0)
 ```
-
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/ShiftingSignal.png)
 
 ### Volume control  
 ```
