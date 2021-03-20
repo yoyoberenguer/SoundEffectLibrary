@@ -401,9 +401,11 @@ sound_length = array_.shape[0] / SAMPLE_RATE
 rms = rms_values_stereo(array_)[2]
 # remove silence from the data samples (values below -35.1 decibels will be ignored during the 
 # contruction of the new sound object)
-new_sound = remove_silence_stereo_int16(array_, -35.1)        
- 
+new_sound = remove_silence_stereo_int16(array_, -35.1)         
 ```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/RemoveSilencesEffect.png)
+
+
 ```python
 # See also dedicated methods for monophonic & stereophonic data samples (int16 & float32)
 remove_silence_stereo_int16(short [:, :] samples_, rms_threshold_=None, bint bypass_avg_=False)
