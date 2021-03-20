@@ -536,7 +536,8 @@ adding_stereo_float32(sound0, sound1, set_gain_ = False)
 add_mono(sound_array0, sound_array1)
 add_stereo(sound0, sound1)
 ```
-
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/MixSoundEffect.png)
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/MixedEffect.png)
 
 ### Downsampling upsampling audio signals
 ```
