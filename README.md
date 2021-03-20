@@ -518,8 +518,7 @@ invert_array_mono_float32(samples_)
 invert_array_stereo_int16(samples_)
 invert_array_stereo_float32(samples_)
 ```
-```python
-```
+![alt text](https://github.com/yoyoberenguer/SoundEffectLibrary/blob/main/screenshots/InvertedSoundEffect.png)
 
 ### Mixing sounds together 
 ```
