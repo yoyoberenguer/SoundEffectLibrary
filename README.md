@@ -1,5 +1,7 @@
 # Python SoundEffectLibrary (Cython file)
 
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/nextseto/PythonAudioEffects/master/LICENSE)
+
 ## DESCRIPTION
 ```
 Sound Effect Library is a free software that include a large variety of tools to modify 
